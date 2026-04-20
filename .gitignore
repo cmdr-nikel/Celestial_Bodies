@@ -1,2 +1,5 @@
 BackEnd/output/model_rf_full.joblib
 BackEnd/output/model_rf_no_redshift.joblib
+BackEnd/output/*.pkl
+BackEnd/output/*.joblib
+BackEnd/output/*.npz
