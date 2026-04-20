@@ -1,0 +1,27 @@
+[2026-04-20 15:08:43] [INFO] Logger initialised | script=01_eda | log=run_20260420_150843_01_eda.log
+[2026-04-20 15:08:43] [INFO] EDA notebook started
+[2026-04-20 15:08:43] [INFO] Dataset loaded: 100,000 rows, 18 columns
+[2026-04-20 15:08:44] [INFO] Missing values: 0
+[2026-04-20 15:08:44] [INFO] Class distribution: {'GALAXY': 59445, 'STAR': 21594, 'QSO': 18961}
+[2026-04-20 15:11:42] [INFO] Redshift stats per class:
+[2026-04-20 15:11:42] [INFO]           count      mean       std       min       25%       50%       75%  \
+class                                                                         
+GALAXY  59445.0  0.421596  0.264858 -0.009971  0.164527  0.456274  0.594699   
+QSO     18961.0  1.719676  0.913954  0.000461  1.106605  1.617232  2.220279   
+STAR    21594.0 -0.000115  0.000465 -0.004136 -0.000295 -0.000076  0.000075   
+
+             max  
+class             
+GALAXY  1.995524  
+QSO     7.011245  
+STAR    0.004153  
+[2026-04-20 15:15:00] [INFO] Running t-SNE with redshift...
+[2026-04-20 15:16:57] [INFO] Running t-SNE with redshift...
+[2026-04-20 15:17:07] [INFO] Running t-SNE without redshift...
+[2026-04-20 15:17:18] [INFO] t-SNE complete
+[2026-04-20 15:17:35] [WARNING] umap-learn not available, skipping UMAP
+[2026-04-20 15:18:23] [INFO] Running UMAP with redshift...
+[2026-04-20 15:18:45] [INFO] Running UMAP without redshift...
+[2026-04-20 15:20:35] [INFO] Running UMAP with redshift...
+[2026-04-20 15:20:47] [INFO] Running UMAP without redshift...
+[2026-04-20 15:20:59] [INFO] UMAP complete

@@ -1,0 +1,9 @@
+              precision    recall  f1-score   support
+
+        STAR       0.83      0.76      0.80      4319
+      GALAXY       0.92      0.94      0.93     11889
+         QSO       0.79      0.82      0.81      3792
+
+    accuracy                           0.88     20000
+   macro avg       0.85      0.84      0.84     20000
+weighted avg       0.88      0.88      0.88     20000

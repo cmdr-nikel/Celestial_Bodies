@@ -1,0 +1,3 @@
+[2026-04-20 14:58:01] [INFO] Logger initialised | script=01_eda | log=run_20260420_145801_01_eda.log
+[2026-04-20 14:58:02] [INFO] EDA notebook started
+[2026-04-20 14:59:56] [INFO] Dataset loaded: 100,000 rows, 18 columns

@@ -1,0 +1,5 @@
+[2026-04-20 15:00:12] [INFO] Logger initialised | script=01_eda | log=run_20260420_150012_01_eda.log
+[2026-04-20 15:00:12] [INFO] EDA notebook started
+[2026-04-20 15:00:12] [INFO] Dataset loaded: 100,000 rows, 18 columns
+[2026-04-20 15:00:13] [INFO] Missing values: 0
+[2026-04-20 15:00:13] [INFO] Class distribution: {'GALAXY': 59445, 'STAR': 21594, 'QSO': 18961}

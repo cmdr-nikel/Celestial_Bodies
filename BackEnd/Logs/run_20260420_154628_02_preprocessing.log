@@ -1,0 +1,15 @@
+[2026-04-20 15:46:28] [INFO] Logger initialised | script=02_preprocessing | log=run_20260420_154628_02_preprocessing.log
+[2026-04-20 15:46:28] [INFO] Preprocessing notebook started
+[2026-04-20 15:46:29] [INFO] Dataset loaded: 100,000 rows, 18 columns
+[2026-04-20 15:46:49] [INFO] Duplicated rows: 0
+[2026-04-20 15:46:51] [INFO] Rows with sentinel value (-9999): 1
+[2026-04-20 15:46:51] [INFO] Sentinel rows removed. New shape: (99999, 18)
+[2026-04-20 15:46:52] [INFO] Clean dataset shape: (99999, 18)
+[2026-04-20 15:46:53] [INFO] Full features: ['u', 'g', 'r', 'i', 'z', 'alpha', 'delta', 'redshift']
+[2026-04-20 15:46:53] [INFO] No-redshift features: ['u', 'g', 'r', 'i', 'z', 'alpha', 'delta']
+[2026-04-20 15:46:54] [INFO] Target mapping: {'STAR': 0, 'GALAXY': 1, 'QSO': 2}
+[2026-04-20 15:46:55] [INFO] Full: X_train=(79999, 8), X_test=(20000, 8)
+[2026-04-20 15:46:56] [INFO] No-redshift: X_train=(79999, 7), X_test=(20000, 7)
+[2026-04-20 15:46:59] [INFO] Pipelines saved to output/
+[2026-04-20 15:47:00] [INFO] Train/test splits saved to output/
+[2026-04-20 15:47:00] [INFO] Preprocessing complete — all artefacts saved

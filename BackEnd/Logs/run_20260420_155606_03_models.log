@@ -1,0 +1,23 @@
+[2026-04-20 15:56:06] [INFO] Logger initialised | script=03_models | log=run_20260420_155606_03_models.log
+[2026-04-20 15:56:06] [INFO] Models notebook started
+[2026-04-20 15:56:08] [INFO] Full set loaded: train=(79999, 8), test=(20000, 8)
+[2026-04-20 15:56:08] [INFO] No-redshift set loaded: train=(79999, 7), test=(20000, 7)
+[2026-04-20 15:56:18] [INFO] Training KNN (k=10) on full feature set...
+[2026-04-20 15:56:18] [INFO] KNN training complete
+[2026-04-20 15:56:24] [INFO] KNN (full) — Accuracy: 0.9382, F1: 0.9383
+[2026-04-20 15:56:26] [INFO] KNN model saved to output/
+[2026-04-20 16:07:39] [INFO] KNN (full) — Accuracy: 0.9382, F1: 0.9383
+[2026-04-20 16:07:40] [INFO] KNN model saved to output/
+[2026-04-20 16:07:43] [INFO] Training Random Forest (full features)...
+[2026-04-20 16:07:48] [INFO] RF (full) training complete
+[2026-04-20 16:08:04] [INFO] Training Random Forest (no redshift)...
+[2026-04-20 16:08:09] [INFO] RF (no redshift) training complete
+[2026-04-20 16:09:31] [INFO] RF (full) — Accuracy: 0.9778, F1: 0.9777
+[2026-04-20 16:09:31] [INFO] RF (no redshift) — Accuracy: 0.8787, F1: 0.8779
+[2026-04-20 16:09:35] [INFO] RF models saved to output/
+[2026-04-20 16:17:31] [INFO] Confusion matrices saved
+[2026-04-20 16:17:35] [INFO] Comparison plot saved
+[2026-04-20 16:22:39] [INFO] Metrics saved: {'KNN (full)': {'accuracy': 0.9382, 'f1_weighted': 0.938327}, 'RF (full)': {'accuracy': 0.97775, 'f1_weighted': 0.977673}, 'RF (no redshift)': {'accuracy': 0.8787, 'f1_weighted': 0.877893}}
+[2026-04-20 16:39:05] [INFO] Training Random Forest (full features)...
+[2026-04-20 16:39:12] [INFO] Training Random Forest (full features)...
+[2026-04-20 16:39:18] [INFO] RF (full) training complete

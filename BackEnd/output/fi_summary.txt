@@ -1,0 +1,20 @@
+=== RF (full) ===
+ feature  importance
+redshift    0.620450
+       z    0.094925
+       g    0.081123
+       u    0.071752
+       i    0.058677
+       r    0.055607
+   alpha    0.009168
+   delta    0.008299
+
+=== RF (no redshift) ===
+feature  importance
+      z    0.206439
+      u    0.195023
+      g    0.184953
+      r    0.147306
+      i    0.141683
+  alpha    0.066379
+  delta    0.058218
