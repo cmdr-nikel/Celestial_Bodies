@@ -786,6 +786,13 @@ const triCx = (positions[0].x + positions[1].x + positions[2].x) / 3;
 const triCy = (positions[0].y + positions[1].y + positions[2].y) / 3;
 const scanPx0 = (SCAN_RADIUS_DEG / 360) * canvas.width * mapScale;
 
+const avgDist = ((d01 + d12 + d02) / 3).toFixed(1);
+ctx.fillStyle = 'rgba(106,172,121,0.7)';
+ctx.font = '9px Share Tech Mono, monospace';
+ctx.textAlign = 'center';
+ctx.textBaseline = 'bottom';
+ctx.fillText(`∠ ${avgDist}°`, triCx, triCy - 14);
+
 // Check if all three scan circles actually overlap (rough check)
 const d01 = Math.hypot(positions[0].x-positions[1].x, positions[0].y-positions[1].y);
 const d12 = Math.hypot(positions[1].x-positions[2].x, positions[1].y-positions[2].y);
