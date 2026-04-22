@@ -329,44 +329,44 @@
         <button class="btn qso"    onclick="classify('QSO')">[ ⊛ QSO ]</button>
       </div>
     </div>
+
+        <!-- HELP VIEW -->
+    <div id="help-view" style="display:none; flex-direction:column; overflow-y:auto; padding:10px; font-size:11px; color:var(--muted); line-height:1.8;">
+
+      <div style="color:var(--bright); letter-spacing:2px; font-size:10px; margin-bottom:8px;">TRIANGULATION</div>
+      <pre style="color:var(--dim); font-size:10px; line-height:1.4; margin-bottom:10px;">
+        A         B
+         +-------+
+          \     /
+           \   /
+            \ /
+           [(*)]
+        [TARGET]
+             \/
+              + C
+      </pre>
+      <div style="color:var(--text); margin-bottom:10px;">Aim all three dishes at the same object. When scan circles overlap a target, a green triangulation point appears. Press <b style="color:var(--bright)">S</b> to lock.</div>
+
+      <hr style="border-color:var(--border); margin:8px 0;">
+      <div style="color:var(--bright); letter-spacing:2px; font-size:10px; margin-bottom:8px;">OBJECT TYPES</div>
+
+      <div style="color:#ccccaa; margin-bottom:4px;">★ STAR</div>
+      <div style="margin-bottom:10px;">Peaks in <b style="color:var(--text)">r / i</b> bands. Narrow spectrum. Redshift near <b style="color:var(--text)">z ≈ 0</b>. Compact point source in preview.</div>
+
+      <div style="color:#8899aa; margin-bottom:4px;">⬡ GALAXY</div>
+      <div style="margin-bottom:10px;">Spread across <b style="color:var(--text)">all ugriz</b> bands evenly. Moderate redshift <b style="color:var(--text)">z &lt; 1</b>. Diffuse elliptical shape in preview.</div>
+
+      <div style="color:#bbaacc; margin-bottom:4px;">◈ QSO</div>
+      <div style="margin-bottom:10px;">Strong excess in <b style="color:var(--text)">u-band</b>. High redshift <b style="color:var(--text)">z &gt; 1</b>, sometimes z &gt; 3. Irregular glow in preview.</div>
+
+      <hr style="border-color:var(--border); margin:8px 0;">
+      <div style="color:var(--bright); letter-spacing:2px; font-size:10px; margin-bottom:8px;">CONTROLS</div>
+      <div><b style="color:var(--text)">← →</b> azimuth &nbsp; <b style="color:var(--text)">↑ ↓</b> elevation</div>
+      <div><b style="color:var(--text)">TAB</b> next dish &nbsp; <b style="color:var(--text)">1/2/3</b> select</div>
+      <div><b style="color:var(--text)">S</b> scan &nbsp; <b style="color:var(--text)">R</b> reset dish</div>
+      <div><b style="color:var(--text)">drag</b> pan sky &nbsp; <b style="color:var(--text)">scroll</b> zoom</div>
+    </div>
   </aside>
-
-  <!-- HELP VIEW -->
-<div id="help-view" style="display:none; flex-direction:column; overflow-y:auto; padding:10px; font-size:11px; color:var(--muted); line-height:1.8;">
-
-  <div style="color:var(--bright); letter-spacing:2px; font-size:10px; margin-bottom:8px;">TRIANGULATION</div>
-  <pre style="color:var(--dim); font-size:10px; line-height:1.4; margin-bottom:10px;">
-    A         B
-     +-------+
-      \     /
-       \   /
-        \ /
-       [(*)]
-    [TARGET]
-         \/
-          + C
-  </pre>
-  <div style="color:var(--text); margin-bottom:10px;">Aim all three dishes at the same object. When scan circles overlap a target, a green triangulation point appears. Press <b style="color:var(--bright)">S</b> to lock.</div>
-
-  <hr style="border-color:var(--border); margin:8px 0;">
-  <div style="color:var(--bright); letter-spacing:2px; font-size:10px; margin-bottom:8px;">OBJECT TYPES</div>
-
-  <div style="color:#ccccaa; margin-bottom:4px;">★ STAR</div>
-  <div style="margin-bottom:10px;">Peaks in <b style="color:var(--text)">r / i</b> bands. Narrow spectrum. Redshift near <b style="color:var(--text)">z ≈ 0</b>. Compact point source in preview.</div>
-
-  <div style="color:#8899aa; margin-bottom:4px;">⬡ GALAXY</div>
-  <div style="margin-bottom:10px;">Spread across <b style="color:var(--text)">all ugriz</b> bands evenly. Moderate redshift <b style="color:var(--text)">z &lt; 1</b>. Diffuse elliptical shape in preview.</div>
-
-  <div style="color:#bbaacc; margin-bottom:4px;">◈ QSO</div>
-  <div style="margin-bottom:10px;">Strong excess in <b style="color:var(--text)">u-band</b>. High redshift <b style="color:var(--text)">z &gt; 1</b>, sometimes z &gt; 3. Irregular glow in preview.</div>
-
-  <hr style="border-color:var(--border); margin:8px 0;">
-  <div style="color:var(--bright); letter-spacing:2px; font-size:10px; margin-bottom:8px;">CONTROLS</div>
-  <div><b style="color:var(--text)">← →</b> azimuth &nbsp; <b style="color:var(--text)">↑ ↓</b> elevation</div>
-  <div><b style="color:var(--text)">TAB</b> next dish &nbsp; <b style="color:var(--text)">1/2/3</b> select</div>
-  <div><b style="color:var(--text)">S</b> scan &nbsp; <b style="color:var(--text)">R</b> reset dish</div>
-  <div><b style="color:var(--text)">drag</b> pan sky &nbsp; <b style="color:var(--text)">scroll</b> zoom</div>
-</div>
 
   <footer id="statusbar">
     <div id="status-msg">SYSTEM READY</div>
