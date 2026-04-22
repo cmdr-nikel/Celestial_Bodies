@@ -882,6 +882,7 @@ function physicsTick() {
   requestAnimationFrame(physicsTick);
 }
 
+function scheduledRedraw() {
   clearTimeout(redrawTimer);
   const now = Date.now();
   if (now - lastFullRedraw > 500) {
