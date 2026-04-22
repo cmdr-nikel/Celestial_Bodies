@@ -1003,8 +1003,8 @@ document.addEventListener('keydown', (e) => {
   if (e.key === '1')                  { selectDish(0); return; }
   if (e.key === '2')                  { selectDish(1); return; }
   if (e.key === '3')                  { selectDish(2); return; }
-  if (e.key==='s'||e.key==='S')       { doScan();  return; }
-  if (e.key==='r'||e.key==='R')       { doReset(); return; }
+  if (e.code === 'KeyS') { doScan(); return; }
+  if (e.code === 'KeyR') { doReset(); return; }
 
   if (e.key==='ArrowLeft')  { dishVel[activeDish].az -= VEL_ACCEL; moved=true; }
   if (e.key==='ArrowRight') { dishVel[activeDish].az += VEL_ACCEL; moved=true; }
