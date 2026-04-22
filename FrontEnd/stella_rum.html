@@ -364,6 +364,7 @@ let   openMailId  = null;    // currently open message id
 
 let redrawTimer = null;
 const REDRAW_DELAY = 280;
+let lastDishSound = 0;
 
 // Velocity state for smooth dish movement
 const dishVel = [
@@ -726,6 +727,11 @@ function physicsTick() {
   if (anyMoving) {
     updateDishUI();
     scheduledRedraw();
+    const now = Date.now();
+    if (now - lastDishSound > 120) {
+      soundDish();
+      lastDishSound = now;
+    }
   }
 
   requestAnimationFrame(physicsTick);
@@ -901,6 +907,7 @@ canvas.addEventListener('wheel', (e) => {
 //  SCAN
 // ═══════════════════════════════════════════════════════════════════
 function doScan() {
+  soundScan();
   document.getElementById('classify-actions').style.display = 'none';
   setStatus(`SCANNING... TRIANGULATING`);
 
@@ -930,6 +937,7 @@ function doScan() {
       document.getElementById('classify-actions').style.display = 'flex';
     renderSignal(best, bestDist);
     showPreview(best, classified.has(best.id) ? 1 : 16);
+    soundLock();
     setStatus(`TRIANGULATION LOCK — ${best.id.toUpperCase()}`, 'ok');
   } else {
     lastScanned = null;
@@ -937,6 +945,7 @@ function doScan() {
     document.getElementById('signal-display').innerHTML =
       `<div class="no-signal">[ TRIANGULATION FAILED ]</div>
        <div class="no-signal" style="margin-top:4px">align all three dishes on the same target</div>`;
+    soundNoSignal();
     setStatus(`NO LOCK — REALIGN DISHES`, 'err');
   }
 }
@@ -949,6 +958,7 @@ function classify(guess) {
   classified.add(lastScanned.id);
   const correct = guess === lastScanned.class;
   if (correct) scoreCorrect++; else scoreWrong++;
+  if (correct) soundCorrect(); else soundWrong();
 
   document.getElementById('classify-actions').style.display = 'none';
 
@@ -1176,6 +1186,7 @@ function renderMailList() {
       <div class="mail-subj">${m.subj}</div>
     </div>
   `).join('');
+  soundMail();
 }
 
 function openMail(id) {
@@ -1207,6 +1218,74 @@ function switchTab(tab) {
   document.getElementById('actions').style.display         = isSignal ? 'flex' : 'none';
   document.getElementById('classify-actions').style.display = 'none';
   document.getElementById('mail-view').classList.toggle('show', !isSignal);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  AUDIO — procedural sounds via Web Audio API
+// ═══════════════════════════════════════════════════════════════════
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playTone(freq, duration, type = 'sine', volume = 0.15, delay = 0) {
+  const osc  = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  osc.type      = type;
+  osc.frequency.setValueAtTime(freq, audioCtx.currentTime + delay);
+  gain.gain.setValueAtTime(volume, audioCtx.currentTime + delay);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + duration);
+
+  osc.start(audioCtx.currentTime + delay);
+  osc.stop(audioCtx.currentTime + delay + duration);
+}
+
+function soundScan() {
+  // Rising sweep — searching
+  const osc  = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+  osc.frequency.linearRampToValueAtTime(600, audioCtx.currentTime + 0.3);
+  gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+  osc.start(); osc.stop(audioCtx.currentTime + 0.35);
+}
+
+function soundLock() {
+  // Three ascending beeps — triangulation lock
+  playTone(440, 0.08, 'square', 0.08, 0.0);
+  playTone(550, 0.08, 'square', 0.08, 0.1);
+  playTone(660, 0.12, 'square', 0.10, 0.2);
+}
+
+function soundNoSignal() {
+  // Low descending tone — failure
+  playTone(180, 0.25, 'sawtooth', 0.08);
+}
+
+function soundCorrect() {
+  // Bright chord — correct classification
+  playTone(523, 0.15, 'sine', 0.10, 0.0);
+  playTone(659, 0.15, 'sine', 0.08, 0.0);
+  playTone(784, 0.25, 'sine', 0.08, 0.1);
+}
+
+function soundWrong() {
+  // Harsh buzz — wrong classification
+  playTone(150, 0.3, 'sawtooth', 0.12);
+}
+
+function soundMail() {
+  // Soft notification — new message
+  playTone(880, 0.08, 'sine', 0.06, 0.0);
+  playTone(660, 0.12, 'sine', 0.06, 0.1);
+}
+
+function soundDish() {
+  // Subtle click — dish movement tick
+  playTone(800, 0.03, 'square', 0.03);
 }
 
 function setStatus(msg, type = '') {
