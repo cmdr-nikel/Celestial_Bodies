@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STELLARUM — Observation Terminal</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap');
+
+  :root {
+    --bg:       #000000;
+    --surface:  #080808;
+    --border:   #1a1a1a;
+    --border-2: #363636;
+    --dim:      #444444;
+    --muted:    #707070;
+    --text:     #c0c0c0;
+    --bright:   #dedede;
+    --white:    #f0f0f0;
+    --green-b:  #6aac79;
+    --font-mono: 'Share Tech Mono', 'Courier New', monospace;
+    --font-vt:   'VT323', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.4;
+    cursor: default;
+    user-select: none;
+  }
+
+  /* CRT scanlines overlay */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 9999;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent, transparent 2px,
+      rgba(0,0,0,0.02) 2px, rgba(0,0,0,0.02) 4px
+    );
+  }
+
+  /* CRT vignette overlay */
+  body::after {
+    content: '';
+    position: fixed; inset: 0; z-index: 9998;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center,
+      transparent 55%, rgba(0,0,0,0.30) 100%);
+  }
+
+  #app {
+    display: grid;
+    grid-template-columns: 220px 1fr 268px;
+    grid-template-rows: 36px 1fr 28px;
+    width: 100vw; height: 100vh;
+  }
+
+  #header {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 12px;
+    border-bottom: 1px solid var(--border-2);
+    background: var(--surface);
+  }
+  .logo { font-family: var(--font-vt); font-size: 22px; letter-spacing: 4px; color: var(--white); }
+  .logo span { color: var(--dim); }
+  .hinfo { display: flex; gap: 24px; font-size: 11px; color: var(--muted); }
+  .hinfo b { color: var(--text); }
+  #clock { color: var(--bright); }
+
+  .panel { background: var(--surface); display: flex; flex-direction: column; overflow: hidden; }
+  #left-panel  { border-right: 1px solid var(--border-2); }
+  #right-panel { border-left:  1px solid var(--border-2); }
+
+  .panel-title {
+    padding: 6px 10px; font-size: 10px; letter-spacing: 2px; color: var(--muted);
+    border-bottom: 1px solid var(--border); text-transform: uppercase; flex-shrink: 0;
+  }
+
+  #sky-wrap { position: relative; background: var(--bg); overflow: hidden; }
+  #sky-canvas { display: block; width: 100%; height: 100%; }
+
+  .dish-block {
+    padding: 8px 10px; border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: background 0.12s; border-left: 2px solid transparent;
+  }
+  .dish-block:hover { background: #0d0d0d; }
+  .dish-block.active { background: #0a0a0a; border-left-color: var(--bright); }
+  .dish-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .dish-name { font-size: 12px; color: var(--bright); letter-spacing: 1px; }
+  .dish-block.active .dish-name { color: var(--white); }
+  .dish-indicator { width: 6px; height: 6px; border-radius: 50%; background: var(--dim); }
+  .dish-block.active .dish-indicator { background: var(--bright); box-shadow: 0 0 4px var(--bright); }
+  .dish-coords { font-size: 11px; color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
+  .dish-coords span { color: var(--text); }
+  .dish-bar { margin-top: 5px; height: 2px; background: var(--border); }
+  .dish-bar-fill { height: 100%; background: var(--dim); transition: width 0.15s; }
+  .dish-block.active .dish-bar-fill { background: var(--muted); }
+
+  #controls-hint {
+    padding: 10px; font-size: 10px; color: var(--dim);
+    line-height: 1.8; border-bottom: 1px solid var(--border);
+  }
+  #controls-hint b { color: var(--muted); }
+
+  #sky-stats { padding: 10px; font-size: 10px; color: var(--dim); line-height: 1.8; flex: 1; }
+  #sky-stats b { color: var(--muted); }
+  .stat-val { color: var(--text); }
+
+  #signal-display {
+    padding: 10px; flex: 1; overflow-y: auto;
+    font-size: 11px; color: var(--muted); line-height: 1.7;
+  }
+  .no-signal { color: var(--dim); font-size: 10px; margin-top: 8px; letter-spacing: 1px; }
+
+  #preview-wrap {
+    padding: 8px 10px 2px; border-bottom: 1px solid var(--border);
+    flex-shrink: 0; display: none;
+  }
+  #preview-wrap.show { display: block; }
+  #preview-title { font-size: 9px; letter-spacing: 2px; color: var(--dim); margin-bottom: 6px; }
+  #preview-canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+
+  .sig-row { display: flex; justify-content: space-between; padding: 2px 0; }
+  .sig-key { color: var(--muted); }
+  .sig-val { color: var(--bright); font-size: 12px; }
+  .sig-val.galaxy { color: #8899aa; }
+  .sig-val.star   { color: #ccccaa; }
+  .sig-val.qso    { color: #bbaacc; }
+  .sig-divider { border: none; border-top: 1px solid var(--border); margin: 6px 0; }
+
+  .spectrum { margin-top: 8px; }
+  .spectrum-title { font-size: 10px; letter-spacing: 1px; color: var(--dim); margin-bottom: 6px; }
+  .spec-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+  .spec-label { width: 10px; color: var(--muted); font-size: 11px; }
+  .spec-track { flex: 1; height: 3px; background: var(--border); }
+  .spec-fill  { height: 100%; background: var(--text); transition: width 0.3s; }
+  .spec-val   { width: 32px; text-align: right; color: var(--dim); font-size: 10px; }
+
+  #actions {
+    padding: 8px 10px; display: flex; gap: 6px;
+    border-top: 1px solid var(--border); flex-shrink: 0;
+  }
+  #classify-actions {
+    padding: 0 10px 8px; display: none;
+    gap: 4px; flex-direction: column;
+  }
+  #classify-actions .classify-label {
+    font-size: 9px; letter-spacing: 2px; color: var(--dim); margin-bottom: 4px;
+  }
+  #classify-actions .classify-row { display: flex; gap: 6px; }
+
+  .btn {
+    flex: 1; padding: 5px 4px;
+    font-family: var(--font-mono); font-size: 10px;
+    letter-spacing: 1px; border: 1px solid var(--border-2);
+    background: transparent; color: var(--muted);
+    cursor: pointer; text-transform: uppercase; transition: all 0.12s;
+  }
+  .btn:hover { border-color: var(--text); color: var(--bright); }
+  .btn.primary { border-color: var(--muted); color: var(--text); }
+  .btn.primary:hover { border-color: var(--white); color: var(--white); background: #111; }
+  .btn.star:hover   { border-color: #ccccaa; color: #ccccaa; }
+  .btn.galaxy:hover { border-color: #8899aa; color: #8899aa; }
+  .btn.qso:hover    { border-color: #bbaacc; color: #bbaacc; }
+  .btn:active { background: #111; }
+
+  #statusbar {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 12px; border-top: 1px solid var(--border-2);
+    background: var(--surface); font-size: 10px; color: var(--dim);
+  }
+  #status-msg { color: var(--muted); letter-spacing: 1px; }
+  #status-msg.ok  { color: var(--green-b); }
+  #status-msg.err { color: #885555; }
+
+  @keyframes blink-fast { 0%,100%{opacity:1} 50%{opacity:0} }
+  .blink { animation: blink-fast 1s step-end infinite; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-2); }
+
+  /* ── TABS ── */
+.panel-tab {
+  cursor: pointer;
+  padding: 0 8px 0 0;
+  color: var(--dim);
+  letter-spacing: 2px;
+  font-size: 10px;
+  transition: color 0.12s;
+}
+.panel-tab:hover { color: var(--text); }
+.panel-tab.active { color: var(--bright); }
+#mail-badge { color: var(--green-b); font-size: 8px; }
+
+/* ── MAIL VIEW ── */
+#mail-view { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+#mail-view.show { display: flex; }
+
+#mail-list {
+  flex-shrink: 0; max-height: 45%;
+  overflow-y: auto; border-bottom: 1px solid var(--border);
+}
+.mail-item {
+  padding: 7px 10px; border-bottom: 1px solid var(--border);
+  cursor: pointer; transition: background 0.1s;
+  font-size: 10px; line-height: 1.6;
+}
+.mail-item:hover { background: #0d0d0d; }
+.mail-item.active { background: #0a0a0a; border-left: 2px solid var(--bright); }
+.mail-item.unread .mail-from { color: var(--white); }
+.mail-from { color: var(--text); letter-spacing: 1px; }
+.mail-subj { color: var(--muted); font-size: 10px; }
+.mail-new  { color: var(--green-b); font-size: 9px; float: right; }
+
+#mail-body {
+  flex: 1; overflow-y: auto;
+  padding: 10px; font-size: 11px;
+  color: var(--muted); line-height: 1.8;
+}
+.mail-body-header { font-size: 10px; color: var(--dim); margin-bottom: 10px; line-height: 2; }
+.mail-body-header b { color: var(--text); }
+.mail-body-text { color: var(--text); white-space: pre-wrap; }
+#mail-empty { color: var(--dim); font-size: 10px; padding: 12px 10px; }
+
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header id="header">
+    <div class="logo">STELL<span>A</span>RUM <span style="font-size:14px;letter-spacing:2px">OBS-TERMINAL v0.3</span></div>
+    <div class="hinfo">
+      <div>SESSION <b>NKD-042</b></div>
+      <div>DATASET <b>SDSS DR17</b></div>
+      <div>OBJECTS <b id="obj-count">—</b></div>
+      <div id="clock">00:00:00</div>
+    </div>
+  </header>
+
+  <aside id="left-panel" class="panel">
+    <div class="panel-title">◈ Antenna Array</div>
+
+    <div class="dish-block active" id="dish-0" onclick="selectDish(0)">
+      <div class="dish-header"><span class="dish-name">DISH — A</span><span class="dish-indicator"></span></div>
+      <div class="dish-coords">AZ <span id="d0-az">180.0°</span> &nbsp; EL <span id="d0-el">45.0°</span></div>
+      <div class="dish-bar"><div class="dish-bar-fill" id="d0-bar"></div></div>
+    </div>
+    <div class="dish-block" id="dish-1" onclick="selectDish(1)">
+      <div class="dish-header"><span class="dish-name">DISH — B</span><span class="dish-indicator"></span></div>
+      <div class="dish-coords">AZ <span id="d1-az">120.0°</span> &nbsp; EL <span id="d1-el">45.0°</span></div>
+      <div class="dish-bar"><div class="dish-bar-fill" id="d1-bar"></div></div>
+    </div>
+    <div class="dish-block" id="dish-2" onclick="selectDish(2)">
+      <div class="dish-header"><span class="dish-name">DISH — C</span><span class="dish-indicator"></span></div>
+      <div class="dish-coords">AZ <span id="d2-az">240.0°</span> &nbsp; EL <span id="d2-el">45.0°</span></div>
+      <div class="dish-bar"><div class="dish-bar-fill" id="d2-bar"></div></div>
+    </div>
+
+    <div id="controls-hint">
+      <b>←→</b> azimuth &nbsp; <b>↑↓</b> elevation<br>
+      <b>TAB</b> next dish &nbsp; <b>1/2/3</b> select<br>
+      <b>S</b> scan (triangulate all 3) &nbsp; <b>R</b> reset dish<br>
+      <b>drag</b> pan &nbsp; <b>scroll</b> zoom
+    </div>
+
+    <div id="sky-stats">
+      <div>VISIBLE <b class="stat-val" id="stat-vis">—</b></div>
+      <div>ZOOM <b class="stat-val" id="stat-zoom">1.0×</b></div>
+      <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">
+        CLASSIFIED <b class="stat-val" id="stat-class">0</b>
+      </div>
+      <div>CORRECT <b class="stat-val" id="stat-correct" style="color:var(--green-b)">0</b></div>
+      <div>WRONG <b class="stat-val" id="stat-wrong" style="color:#885555">0</b></div>
+    </div>
+  </aside>
+
+  <main id="sky-wrap">
+    <canvas id="sky-canvas"></canvas>
+  </main>
+
+  <aside class="panel" id="right-panel">
+    <div class="panel-title" id="right-panel-title">
+  <span
+    class="panel-tab active" id="tab-signal"
+    onclick="switchTab('signal')">◈ SIGNAL</span>
+  <span
+    class="panel-tab" id="tab-mail"
+    onclick="switchTab('mail')">✉ MAIL <span id="mail-badge" style="display:none">●</span></span>
+</div>
+
+    <div id="preview-wrap">
+      <div id="preview-title">VISUAL CAPTURE / LOW-RES</div>
+      <canvas id="preview-canvas" width="120" height="80"></canvas>
+    </div>
+
+  <!-- MAIL VIEW -->
+  <div id="mail-view">
+    <div id="mail-list">
+      <div id="mail-empty">[ INBOX EMPTY ]</div>
+    </div>
+    <div id="mail-body">
+      <div style="color:var(--dim);font-size:10px">select a message</div>
+    </div>
+  </div>
+
+    <div id="signal-display">
+      <div class="no-signal">[ NO SIGNAL ACQUIRED ]</div>
+      <div class="no-signal" style="margin-top:4px">aim dish · press S to scan</div>
+    </div>
+
+    <div id="actions">
+      <button class="btn primary" onclick="doScan()">[ SCAN ]</button>
+      <button class="btn" onclick="doReset()">[ RESET ]</button>
+    </div>
+
+    <div id="classify-actions">
+      <div class="classify-label">CLASSIFY SIGNAL AS:</div>
+      <div class="classify-row">
+        <button class="btn star"   onclick="classify('STAR')">[ ✦ STAR ]</button>
+        <button class="btn galaxy" onclick="classify('GALAXY')">[ ░ GALAXY ]</button>
+        <button class="btn qso"    onclick="classify('QSO')">[ ⊛ QSO ]</button>
+      </div>
+    </div>
+  </aside>
+
+  <footer id="statusbar">
+    <div id="status-msg">SYSTEM READY</div>
+    <div id="status-coords">RA — &nbsp; DEC —</div>
+    <div>SDSS / SLOAN DIGITAL SKY SURVEY<span class="blink" style="margin-left:6px">_</span></div>
+  </footer>
+
+</div>
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════════
+let objects      = [];
+let classified   = new Set();
+let lastScanned  = null;
+let scoreCorrect = 0;
+let scoreWrong   = 0;
+
+let activeDish      = 0;
+let mapOffset       = { x: 0, y: 0 };
+let mapScale        = 1.0;
+let isDragging      = false;
+let dragStart       = { x: 0, y: 0 };
+let dragOffsetStart = { x: 0, y: 0 };
+
+// Mail system state
+const inbox       = [];      // all received messages
+let   openMailId  = null;    // currently open message id
+
+let redrawTimer = null;
+const REDRAW_DELAY = 280;
+
+// Velocity state for smooth dish movement
+const dishVel = [
+  { az: 0, el: 0 },
+  { az: 0, el: 0 },
+  { az: 0, el: 0 },
+];
+const VEL_ACCEL  = 0.2;   // acceleration per frame — raise for snappier start
+const VEL_MAX    = 1.5;   // max degrees/frame — raise for faster top speed
+const VEL_DRAG   = 0.72;  // friction (0-1) — lower = stops faster
+
+const dishes = [
+  { az: 180.0, el: 45.0 },
+  { az: 120.0, el: 45.0 },
+  { az: 240.0, el: 45.0 },
+];
+
+const SCAN_RADIUS_DEG = 8;
+
+// ═══════════════════════════════════════════════════════════════════
+//  CANVAS SETUP
+// ═══════════════════════════════════════════════════════════════════
+const canvas = document.getElementById('sky-canvas');
+const ctx    = canvas.getContext('2d');
+const wrap   = document.getElementById('sky-wrap');
+
+function resizeCanvas() {
+  canvas.width  = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+  drawSky();
+}
+window.addEventListener('resize', resizeCanvas);
+
+// ═══════════════════════════════════════════════════════════════════
+//  COORDINATE TRANSFORMS
+// ═══════════════════════════════════════════════════════════════════
+function skyToCanvas(ra, dec) {
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2 + mapOffset.x;
+  const cy = H / 2 + mapOffset.y;
+  return {
+    x: cx + ((ra - 180) / 360) * W * mapScale,
+    y: cy + (-dec / 180) * H * mapScale,
+  };
+}
+
+function canvasToSky(px, py) {
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2 + mapOffset.x;
+  const cy = H / 2 + mapOffset.y;
+  return {
+    ra:  (((px - cx) / (W * mapScale)) * 360 + 180 + 360) % 360,
+    dec: (-(py - cy) / (H * mapScale)) * 180,
+  };
+}
+
+function dishToSky(dish) {
+  return { ra: dish.az, dec: dish.el - 45 };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  NEUTRAL SYMBOLS — brightness only, no class spoiler
+// ═══════════════════════════════════════════════════════════════════
+const REVEALED_CHAR  = { STAR: ['✦','✧','⭑','✶'], GALAXY: ['░','▒','▓','▒'], QSO: ['⊛','◎','⊕'] };
+const REVEALED_COLOR = { STAR: '#ccccaa', GALAXY: '#8899aa', QSO: '#bbaacc' };
+
+function neutralChar(obj) {
+  const r = obj.r;
+  const s = parseInt(obj.id.replace('sdss_','')) % 3;
+  if (r > 20.5) return ['·','‥','˙'][s];
+  if (r > 19.5) return ['∙','·','‥'][s];
+  if (r > 18.5) return ['•','∙','·'][s];
+  if (r > 17.5) return ['✶','*','•'][s];
+  if (r > 16.5) return ['✷','✶','*'][s];
+  return             ['✸','✦','✷'][s];
+}
+
+function neutralAlpha(obj) {
+  const r = obj.r;
+  if (r < 15) return 1.0;
+  if (r > 21) return 0.25;
+  return 1.0 - (r - 15) / 7;
+}
+
+function neutralColor(obj) {
+  const gr   = Math.max(-1, Math.min(3, obj.color_gr));
+  const base = 130;
+  return `rgb(${Math.round(base + gr * 6)},${base},${Math.round(base - gr * 5)})`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SEEDED PSEUDO-RANDOM
+// ═══════════════════════════════════════════════════════════════════
+function seededRandom(seed) {
+  let s = seed;
+  return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  DRAW SKY — progressive left-to-right scan
+// ═══════════════════════════════════════════════════════════════════
+let scanAnimId = null;
+
+function drawSky() {
+  if (scanAnimId) { cancelAnimationFrame(scanAnimId); scanAnimId = null; }
+
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+
+  drawGrid();
+  drawMilkyWay();
+  drawNebulae();
+
+  // Collect visible objects — triple RA pass for seamless wrap
+  const visible = [];
+  for (const obj of objects) {
+    for (const offset of [-360, 0, 360]) {
+      const p = skyToCanvas(obj.ra + offset, obj.dec);
+      if (p.x > -20 && p.x < W + 20 && p.y > -20 && p.y < H + 20)
+        visible.push({ obj, p });
+    }
+  }
+
+  const STRIP_W = 12;
+  const STRIPS  = Math.ceil(W / STRIP_W);
+  let   strip   = 0;
+
+  function scanStep() {
+    const x0 = strip * STRIP_W, x1 = x0 + STRIP_W;
+    ctx.font = '12px Share Tech Mono, monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+    for (const { obj, p } of visible) {
+      if (p.x < x0 || p.x >= x1) continue;
+      const alpha = neutralAlpha(obj);
+      if (classified.has(obj.id)) {
+        const arr  = REVEALED_CHAR[obj.class] || ['·'];
+        const seed = parseInt(obj.id.replace('sdss_','')) % arr.length;
+        ctx.globalAlpha = Math.max(alpha, 0.7);
+        ctx.fillStyle   = REVEALED_COLOR[obj.class] || '#aaa';
+        ctx.fillText(arr[seed], p.x, p.y);
+      } else {
+        ctx.globalAlpha = alpha * 0.9;
+        ctx.fillStyle   = neutralColor(obj);
+        ctx.fillText(neutralChar(obj), p.x, p.y);
+      }
+    }
+    ctx.globalAlpha = 1;
+    strip++;
+    if (strip < STRIPS) {
+      scanAnimId = requestAnimationFrame(scanStep);
+    } else {
+      scanAnimId = null;
+      drawDishes();
+      updateStats();
+    }
+  }
+  scanStep();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  GRID
+// ═══════════════════════════════════════════════════════════════════
+function drawGrid() {
+  const W = canvas.width, H = canvas.height;
+  ctx.lineWidth = 1;
+  ctx.font = '9px Share Tech Mono, monospace';
+
+  for (let ra = 0; ra <= 360; ra += 30) {
+    const p0 = skyToCanvas(ra, -90), p1 = skyToCanvas(ra, 90);
+    ctx.strokeStyle = '#0e0e0e';
+    ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.stroke();
+    const pm = skyToCanvas(ra, 0);
+    if (pm.x > 10 && pm.x < W - 10) {
+      ctx.fillStyle = '#1e1e1e'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText(`${ra}°`, pm.x, pm.y + 2);
+    }
+  }
+  for (let dec = -90; dec <= 90; dec += 30) {
+    const p0 = skyToCanvas(0, dec), p1 = skyToCanvas(360, dec);
+    ctx.strokeStyle = dec === 0 ? '#151515' : '#0e0e0e';
+    ctx.lineWidth   = dec === 0 ? 1.5 : 1;
+    ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.stroke();
+    ctx.lineWidth = 1;
+    if (p0.y > 10 && p0.y < H - 10) {
+      ctx.fillStyle = '#1e1e1e'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(`${dec > 0 ? '+' : ''}${dec}°`, 4, p0.y);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  MILKY WAY — sinusoidal band simulating galactic plane
+// ═══════════════════════════════════════════════════════════════════
+function drawMilkyWay() {
+  const rng = seededRandom(777);
+  const W = canvas.width, H = canvas.height;
+
+  for (let i = 0; i < 600; i++) {
+    const ra        = rng() * 360;
+    const centerDec = Math.sin((ra - 80) * Math.PI / 180) * 55;
+    const spread    = 8 + rng() * 18;
+    const dec       = centerDec + (rng() - 0.5) * spread * 2;
+
+    for (const offset of [-360, 0, 360]) {
+      const p = skyToCanvas(ra + offset, dec);
+      if (p.x < -50 || p.x > W + 50 || p.y < -50 || p.y > H + 50) continue;
+
+      const r    = (6 + rng() * 30) * Math.sqrt(mapScale);
+      const fade = 1 - Math.abs(dec - centerDec) / (spread * 2);
+      const a    = (0.012 + rng() * 0.025) * fade;
+      const warm = rng() > 0.6;
+      const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+      grad.addColorStop(0, warm ? `rgba(255,240,200,${a * 1.5})` : `rgba(200,215,255,${a})`);
+      grad.addColorStop(1, `rgba(0,0,0,0)`);
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  NEBULAE — seeded dust clouds
+// ═══════════════════════════════════════════════════════════════════
+function drawNebulae() {
+  const rng = seededRandom(1337);
+  const W = canvas.width, H = canvas.height;
+
+  for (let i = 0; i < 150; i++) {
+    const ra  = rng() * 360;
+    const dec = (rng() - 0.5) * 180;
+
+    for (const offset of [-360, 0, 360]) {
+      const p = skyToCanvas(ra + offset, dec);
+      if (p.x < -100 || p.x > W + 100 || p.y < -100 || p.y > H + 100) continue;
+
+      const r    = (18 + rng() * 40) * Math.sqrt(mapScale);
+      const a    = 0.055 + rng() * 0.04;
+      const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+      grad.addColorStop(0, `rgba(180,200,255,${a})`);
+      grad.addColorStop(1, `rgba(0,0,0,0)`);
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  DISH CROSSHAIRS
+// ═══════════════════════════════════════════════════════════════════
+function drawDishes() {
+  for (let i = 0; i < 3; i++) {
+    const d   = dishes[i];
+    const sky = dishToSky(d);
+    const p   = skyToCanvas(sky.ra, sky.dec);
+    const isA = i === activeDish;
+    const scanPx = (SCAN_RADIUS_DEG / 360) * canvas.width * mapScale;
+
+    ctx.beginPath(); ctx.arc(p.x, p.y, scanPx, 0, Math.PI * 2);
+    ctx.strokeStyle = isA ? 'rgba(180,180,180,0.2)' : 'rgba(70,70,70,0.15)';
+    ctx.lineWidth = 1; ctx.stroke();
+
+    const cs = isA ? 10 : 6;
+    ctx.strokeStyle = isA ? 'rgba(220,220,220,0.85)' : 'rgba(90,90,90,0.5)';
+    ctx.lineWidth   = isA ? 1.5 : 1;
+    ctx.beginPath();
+    ctx.moveTo(p.x - cs, p.y); ctx.lineTo(p.x + cs, p.y);
+    ctx.moveTo(p.x, p.y - cs); ctx.lineTo(p.x, p.y + cs);
+    ctx.stroke();
+
+    ctx.font = '10px Share Tech Mono, monospace';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillStyle = isA ? 'rgba(200,200,200,0.85)' : 'rgba(70,70,70,0.65)';
+    ctx.fillText(`[${['A','B','C'][i]}]`, p.x + 8, p.y - 14);
+  }
+  // Draw triangulation zone where all three dishes overlap
+const positions = dishes.map(d => skyToCanvas(dishToSky(d).ra, dishToSky(d).dec));
+const triCx = (positions[0].x + positions[1].x + positions[2].x) / 3;
+const triCy = (positions[0].y + positions[1].y + positions[2].y) / 3;
+const scanPx0 = (SCAN_RADIUS_DEG / 360) * canvas.width * mapScale;
+
+// Check if all three scan circles actually overlap (rough check)
+const d01 = Math.hypot(positions[0].x-positions[1].x, positions[0].y-positions[1].y);
+const d12 = Math.hypot(positions[1].x-positions[2].x, positions[1].y-positions[2].y);
+const d02 = Math.hypot(positions[0].x-positions[2].x, positions[0].y-positions[2].y);
+
+if (d01 < scanPx0*2 && d12 < scanPx0*2 && d02 < scanPx0*2) {
+  // Triangulation zone — glowing center dot
+  ctx.beginPath();
+  ctx.arc(triCx, triCy, 4, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(106,172,121,0.9)';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(triCx, triCy, 10, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(106,172,121,0.3)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Triangle connecting the three dishes
+  ctx.beginPath();
+  ctx.moveTo(positions[0].x, positions[0].y);
+  ctx.lineTo(positions[1].x, positions[1].y);
+  ctx.lineTo(positions[2].x, positions[2].y);
+  ctx.closePath();
+  ctx.strokeStyle = 'rgba(106,172,121,0.15)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  STATS
+// ═══════════════════════════════════════════════════════════════════
+function updateStats() {
+  let vis = 0;
+  const W = canvas.width, H = canvas.height;
+  for (const obj of objects) {
+    const p = skyToCanvas(obj.ra, obj.dec);
+    if (p.x > 0 && p.x < W && p.y > 0 && p.y < H) vis++;
+  }
+  document.getElementById('stat-vis').textContent     = vis;
+  document.getElementById('stat-zoom').textContent    = mapScale.toFixed(1) + '×';
+  document.getElementById('stat-class').textContent   = classified.size;
+  document.getElementById('stat-correct').textContent = scoreCorrect;
+  document.getElementById('stat-wrong').textContent   = scoreWrong;
+
+  const c = canvasToSky(W / 2, H / 2);
+  document.getElementById('status-coords').textContent =
+    `RA ${c.ra.toFixed(1)}°  DEC ${c.dec.toFixed(1)}°`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  DEBOUNCE REDRAW
+// ═══════════════════════════════════════════════════════════════════
+// Physics loop — runs every frame, applies velocity and drag
+function physicsTick() {
+  let anyMoving = false;
+
+  for (let i = 0; i < 3; i++) {
+    const v = dishVel[i];
+    const d = dishes[i];
+
+    // Clamp velocity
+    v.az = Math.max(-VEL_MAX, Math.min(VEL_MAX, v.az));
+    v.el = Math.max(-VEL_MAX, Math.min(VEL_MAX, v.el));
+
+    if (Math.abs(v.az) > 0.02 || Math.abs(v.el) > 0.02) {
+      d.az = (d.az + v.az + 360) % 360;
+      d.el = Math.max(0, Math.min(90, d.el + v.el));
+      v.az *= VEL_DRAG;
+      v.el *= VEL_DRAG;
+      anyMoving = true;
+    } else {
+      v.az = 0; v.el = 0;
+    }
+  }
+
+  if (anyMoving) {
+    updateDishUI();
+    scheduledRedraw();
+  }
+
+  requestAnimationFrame(physicsTick);
+}
+
+function scheduledRedraw() {
+  clearTimeout(redrawTimer);
+  redrawTimer = setTimeout(() => drawSky(), REDRAW_DELAY);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  PIXELISED PREVIEW
+// ═══════════════════════════════════════════════════════════════════
+const previewCanvas = document.getElementById('preview-canvas');
+const pCtx          = previewCanvas.getContext('2d');
+
+function drawPreview(obj, blockSize) {
+  const W = previewCanvas.width, H = previewCanvas.height;
+  pCtx.clearRect(0, 0, W, H);
+  pCtx.fillStyle = '#000'; pCtx.fillRect(0, 0, W, H);
+
+  const seed = parseInt(obj.id.replace('sdss_',''));
+  const rng  = seededRandom(seed);
+  const cls  = obj.class;
+
+  const offW = Math.ceil(W / blockSize), offH = Math.ceil(H / blockSize);
+  const off  = document.createElement('canvas');
+  off.width = offW; off.height = offH;
+  const oCtx = off.getContext('2d');
+
+  for (let y = 0; y < offH; y++)
+    for (let x = 0; x < offW; x++) {
+      const n = rng() * 0.06;
+      oCtx.fillStyle = `rgb(${Math.round(n*255)},${Math.round(n*255)},${Math.round(n*255)})`;
+      oCtx.fillRect(x, y, 1, 1);
+    }
+
+  const cx = offW / 2, cy = offH / 2;
+
+  if (cls === 'STAR') {
+    const bright = 0.6 + rng() * 0.4;
+    for (let y = 0; y < offH; y++)
+      for (let x = 0; x < offW; x++) {
+        const dx = x - cx, dy = y - cy, dist = Math.sqrt(dx*dx + dy*dy);
+        let v = Math.exp(-dist*dist/2) * bright;
+        if (Math.abs(dx) < 0.8) v += Math.exp(-Math.abs(dy)/3) * bright * 0.5;
+        if (Math.abs(dy) < 0.8) v += Math.exp(-Math.abs(dx)/3) * bright * 0.5;
+        v = Math.min(1, v);
+        const vb = Math.round(v * 255);
+        oCtx.fillStyle = `rgb(${vb},${vb},${Math.round(vb*0.85)})`;
+        oCtx.fillRect(x, y, 1, 1);
+      }
+  } else if (cls === 'GALAXY') {
+    const angle = rng() * Math.PI, axisA = 0.35 + rng() * 0.2, axisB = 0.12 + rng() * 0.12;
+    const bright = 0.55 + rng() * 0.35;
+    for (let y = 0; y < offH; y++)
+      for (let x = 0; x < offW; x++) {
+        const dx = (x-cx)/offW, dy = (y-cy)/offH;
+        const rx = dx*Math.cos(angle)+dy*Math.sin(angle);
+        const ry = -dx*Math.sin(angle)+dy*Math.cos(angle);
+        const ell = (rx/axisA)*(rx/axisA)+(ry/axisB)*(ry/axisB);
+        let v = Math.exp(-ell*8)*bright + Math.exp(-(dx*dx+dy*dy)*200)*0.9;
+        v = Math.min(1, v + rng()*0.02);
+        oCtx.fillStyle = `rgb(${Math.round(v*200)},${Math.round(v*200)},${Math.round(v*220)})`;
+        oCtx.fillRect(x, y, 1, 1);
+      }
+  } else {
+    for (let y = 0; y < offH; y++)
+      for (let x = 0; x < offW; x++) {
+        const dx = x-cx, dy = y-cy, dist = Math.sqrt(dx*dx+dy*dy);
+        let v = Math.exp(-dist*dist/0.8);
+        v += Math.exp(-(dist-offW*0.18)*(dist-offW*0.18)/0.5)*0.25;
+        v = Math.min(1, v + rng()*0.03);
+        oCtx.fillStyle = `rgb(${Math.round(v*255)},${Math.round(v*210)},${Math.round(v*255)})`;
+        oCtx.fillRect(x, y, 1, 1);
+      }
+  }
+
+  pCtx.imageSmoothingEnabled = false;
+  pCtx.drawImage(off, 0, 0, W, H);
+
+  pCtx.globalAlpha = 0.12;
+  const rng2 = seededRandom(seed + 999);
+  for (let i = 0; i < W * H * 0.1; i++) {
+    pCtx.fillStyle = `rgba(255,255,255,${rng2()*0.5})`;
+    pCtx.fillRect(Math.floor(rng2()*W), Math.floor(rng2()*H), 1, 1);
+  }
+  pCtx.globalAlpha = 1;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  DISH UI
+// ═══════════════════════════════════════════════════════════════════
+function selectDish(i) {
+  activeDish = i;
+  document.querySelectorAll('.dish-block').forEach((el, idx) =>
+    el.classList.toggle('active', idx === i));
+  drawSky();
+  setStatus(`DISH ${['A','B','C'][i]} SELECTED`, 'ok');
+}
+
+function updateDishUI() {
+  for (let i = 0; i < 3; i++) {
+    const d = dishes[i];
+    document.getElementById(`d${i}-az`).textContent  = d.az.toFixed(1) + '°';
+    document.getElementById(`d${i}-el`).textContent  = d.el.toFixed(1) + '°';
+    document.getElementById(`d${i}-bar`).style.width = (d.az / 360 * 100).toFixed(1) + '%';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  KEYBOARD
+// ═══════════════════════════════════════════════════════════════════
+const AZ_STEP = 3.0, EL_STEP = 2.0;
+
+document.addEventListener('keydown', (e) => {
+  const d = dishes[activeDish];
+  let moved = false;
+
+  if (e.key === 'Tab')                { e.preventDefault(); selectDish((activeDish+1)%3); return; }
+  if (e.key === '1')                  { selectDish(0); return; }
+  if (e.key === '2')                  { selectDish(1); return; }
+  if (e.key === '3')                  { selectDish(2); return; }
+  if (e.key==='s'||e.key==='S')       { doScan();  return; }
+  if (e.key==='r'||e.key==='R')       { doReset(); return; }
+
+  if (e.key==='ArrowLeft')  { dishVel[activeDish].az -= VEL_ACCEL; moved=true; }
+  if (e.key==='ArrowRight') { dishVel[activeDish].az += VEL_ACCEL; moved=true; }
+  if (e.key==='ArrowUp')    { dishVel[activeDish].el += VEL_ACCEL; moved=true; }
+  if (e.key==='ArrowDown')  { dishVel[activeDish].el -= VEL_ACCEL; moved=true; }
+
+  if (moved) {
+    e.preventDefault();
+    updateDishUI();
+    scheduledRedraw();
+    setStatus(`DISH ${['A','B','C'][activeDish]} → AZ ${d.az.toFixed(1)}° EL ${d.el.toFixed(1)}°`);
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+//  MOUSE — PAN & ZOOM
+// ═══════════════════════════════════════════════════════════════════
+canvas.addEventListener('mousedown', (e) => {
+  isDragging = true;
+  dragStart  = { x: e.clientX, y: e.clientY };
+  dragOffsetStart = { ...mapOffset };
+  canvas.style.cursor = 'grabbing';
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  mapOffset.x = dragOffsetStart.x + (e.clientX - dragStart.x);
+  mapOffset.y = dragOffsetStart.y + (e.clientY - dragStart.y);
+  drawSky();
+});
+
+document.addEventListener('mouseup', () => {
+  if (!isDragging) return;
+  isDragging = false;
+  canvas.style.cursor = 'crosshair';
+  scheduledRedraw();
+});
+
+canvas.style.cursor = 'crosshair';
+
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  mapScale = Math.max(0.25, Math.min(10, mapScale * (e.deltaY < 0 ? 1.15 : 0.87)));
+  scheduledRedraw();
+}, { passive: false });
+
+// ═══════════════════════════════════════════════════════════════════
+//  SCAN
+// ═══════════════════════════════════════════════════════════════════
+function doScan() {
+  document.getElementById('classify-actions').style.display = 'none';
+  setStatus(`SCANNING... TRIANGULATING`);
+
+  // All three dishes must cover the same object
+  let best = null, bestDist = Infinity;
+
+  for (const obj of objects) {
+    let maxDist = 0;
+    let allInRange = true;
+
+    for (const d of dishes) {
+      const sky  = dishToSky(d);
+      const dist = Math.sqrt((obj.ra-sky.ra)**2 + (obj.dec-sky.dec)**2);
+      if (dist >= SCAN_RADIUS_DEG) { allInRange = false; break; }
+      if (dist > maxDist) maxDist = dist;
+    }
+
+    if (allInRange && maxDist < bestDist) {
+      bestDist = maxDist;
+      best = obj;
+    }
+  }
+
+  if (best) {
+    lastScanned = best;
+    if (!classified.has(best.id))
+      document.getElementById('classify-actions').style.display = 'flex';
+    renderSignal(best, bestDist);
+    showPreview(best, classified.has(best.id) ? 1 : 16);
+    setStatus(`TRIANGULATION LOCK — ${best.id.toUpperCase()}`, 'ok');
+  } else {
+    lastScanned = null;
+    document.getElementById('preview-wrap').classList.remove('show');
+    document.getElementById('signal-display').innerHTML =
+      `<div class="no-signal">[ TRIANGULATION FAILED ]</div>
+       <div class="no-signal" style="margin-top:4px">align all three dishes on the same target</div>`;
+    setStatus(`NO LOCK — REALIGN DISHES`, 'err');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  CLASSIFY
+// ═══════════════════════════════════════════════════════════════════
+function classify(guess) {
+  if (!lastScanned) return;
+  classified.add(lastScanned.id);
+  const correct = guess === lastScanned.class;
+  if (correct) scoreCorrect++; else scoreWrong++;
+
+  document.getElementById('classify-actions').style.display = 'none';
+
+  setStatus(
+    correct
+      ? `CORRECT — ${lastScanned.class} CONFIRMED ✓`
+      : `WRONG — ACTUAL TYPE: ${lastScanned.class}`,
+    correct ? 'ok' : 'err'
+  );
+
+  showPreview(lastScanned, 1);    // reveal full image
+  renderSignal(lastScanned, 0);  // reveal class and redshift
+  drawSky();                      // re-render map with classified symbol
+
+  // Trigger messages based on progress
+if (classified.size === 1) deliverMessage('first_classification');
+if (classified.size === 5) deliverMessage('five_classified');
+if (classified.size === 10) deliverMessage('ten_classified');
+if (lastScanned.class === 'QSO' && correct)
+  deliverMessage('first_qso');
+}
+
+function showPreview(obj, blockSize) {
+  document.getElementById('preview-wrap').classList.add('show');
+  drawPreview(obj, blockSize);
+}
+
+function renderSignal(obj, dist) {
+  const cls     = obj.class.toLowerCase();
+  const isKnown = classified.has(obj.id);
+
+  const clsDisplay = isKnown
+    ? ({ star: 'STAR ✦', galaxy: 'GALAXY ░', qso: 'QSO ⊛' }[cls] || obj.class)
+    : '[ UNIDENTIFIED ]';
+
+  const bands    = ['u','g','r','i','z'];
+  const specRows = bands.map(b => {
+    const pct = Math.round((obj[`${b}_norm`] || 0) * 100);
+    return `<div class="spec-row">
+      <span class="spec-label">${b.toUpperCase()}</span>
+      <div class="spec-track"><div class="spec-fill" style="width:${pct}%"></div></div>
+      <span class="spec-val">${obj[b].toFixed(1)}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('signal-display').innerHTML = `
+    <div class="sig-row">
+      <span class="sig-key">SIGNAL ID</span>
+      <span class="sig-val">${obj.id.toUpperCase()}</span>
+    </div>
+    <div class="sig-row">
+      <span class="sig-key">TYPE</span>
+      <span class="sig-val ${isKnown ? cls : ''}">${clsDisplay}</span>
+    </div>
+    <hr class="sig-divider">
+    <div class="sig-row">
+      <span class="sig-key">RA</span>
+      <span class="sig-val">${obj.ra.toFixed(4)}°</span>
+    </div>
+    <div class="sig-row">
+      <span class="sig-key">DEC</span>
+      <span class="sig-val">${obj.dec.toFixed(4)}°</span>
+    </div>
+    <div class="sig-row">
+      <span class="sig-key">REDSHIFT z</span>
+      <span class="sig-val">${isKnown ? obj.redshift.toFixed(5) : '???'}</span>
+    </div>
+    ${dist > 0 ? `<div class="sig-row">
+      <span class="sig-key">Δ-ANG</span>
+      <span class="sig-val">${dist.toFixed(2)}°</span>
+    </div>` : ''}
+    <hr class="sig-divider">
+    <div class="spectrum">
+      <div class="spectrum-title">PHOTOMETRY / ugriz</div>
+      ${specRows}
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  RESET
+// ═══════════════════════════════════════════════════════════════════
+function doReset() {
+  dishes[activeDish].az = [180, 120, 240][activeDish];
+  dishes[activeDish].el = 45;
+  updateDishUI();
+  scheduledRedraw();
+  setStatus(`DISH ${['A','B','C'][activeDish]} RESET TO DEFAULT`);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  STATUS BAR
+// ═══════════════════════════════════════════════════════════════════
+let statusTimer = null;
+
+// ═══════════════════════════════════════════════════════════════════
+//  MAIL SYSTEM
+// ═══════════════════════════════════════════════════════════════════
+const MESSAGES = [
+  {
+    id: 'welcome',
+    from: 'SDSS-CTRL-01',
+    subj: 'Welcome, Observer',
+    body:
+`Operator NKD-042,
+
+Your session has been authorized.
+Antenna array is online and pointed at SDSS DR17 survey data.
+
+Your primary objective:
+Classify celestial objects using spectral and photometric data.
+
+Use the three dishes to triangulate a signal lock,
+then analyze the photometry readout to determine object type.
+
+Good luck out there.
+
+— SDSS Control`
+  },
+  {
+    id: 'first_classification',
+    from: 'SDSS-CTRL-01',
+    subj: 'First contact confirmed',
+    body:
+`NKD-042,
+
+First classification logged. Good work.
+
+Your next objective: classify 5 objects total.
+Pay attention to the ugriz photometry bands —
+stars peak in r/i, galaxies spread across all bands,
+quasars show unusual u-band excess.
+
+Keep scanning.
+
+— SDSS Control`
+  },
+  {
+    id: 'five_classified',
+    from: 'Dr. K. Nakamura',
+    subj: 'Anomalous signal — check coordinates',
+    body:
+`Observer,
+
+I've been monitoring your session remotely.
+Something unusual in your scan sector.
+
+There's a point source near RA 180°, DEC +15°
+that doesn't match standard stellar templates.
+Redshift reading was... inconsistent.
+
+Could be instrument noise. Could be something else.
+Triangulate it carefully.
+
+— K.N.`
+  },
+  {
+    id: 'first_qso',
+    from: 'SDSS-CTRL-01',
+    subj: '// PRIORITY // Quasar confirmed',
+    body:
+`NKD-042,
+
+You've confirmed a quasar signal.
+
+These are among the most distant objects observable —
+some with redshift z > 3.0, meaning we see them
+as they existed billions of years ago.
+
+The light you just analyzed left its source
+before Earth existed.
+
+Continue classification. Priority target count: 10.
+
+— SDSS Control`
+  },
+  {
+    id: 'ten_classified',
+    from: '???',
+    subj: 'you are not alone in this survey',
+    body:
+`...
+
+we have been watching your session, NKD-042.
+
+the object at RA 212.4 DEC +18.2
+is not in the official catalog.
+
+do not classify it.
+do not report it.
+
+just keep scanning.
+
+we will contact you again.
+
+          —`
+  },
+];
+
+function deliverMessage(id) {
+  // Don't deliver duplicates
+  if (inbox.find(m => m.id === id)) return;
+  const msg = MESSAGES.find(m => m.id === id);
+  if (!msg) return;
+
+  inbox.unshift({ ...msg, read: false });
+  renderMailList();
+
+  // Badge on tab
+  document.getElementById('mail-badge').style.display = 'inline';
+  setStatus(`NEW MESSAGE: ${msg.subj}`, 'ok');
+}
+
+function renderMailList() {
+  const list = document.getElementById('mail-list');
+  if (inbox.length === 0) {
+    list.innerHTML = '<div id="mail-empty">[ INBOX EMPTY ]</div>';
+    return;
+  }
+  list.innerHTML = inbox.map(m => `
+    <div class="mail-item ${m.read ? '' : 'unread'} ${openMailId === m.id ? 'active' : ''}"
+         onclick="openMail('${m.id}')">
+      <span class="mail-new">${m.read ? '' : '[NEW]'}</span>
+      <div class="mail-from">${m.from}</div>
+      <div class="mail-subj">${m.subj}</div>
+    </div>
+  `).join('');
+}
+
+function openMail(id) {
+  openMailId = id;
+  const msg = inbox.find(m => m.id === id);
+  if (!msg) return;
+  msg.read = true;
+
+  // Hide badge if all read
+  if (inbox.every(m => m.read))
+    document.getElementById('mail-badge').style.display = 'none';
+
+  renderMailList();
+  document.getElementById('mail-body').innerHTML = `
+    <div class="mail-body-header">
+      <div>FROM &nbsp;<b>${msg.from}</b></div>
+      <div>SUBJ &nbsp;<b>${msg.subj}</b></div>
+    </div>
+    <div class="mail-body-text">${msg.body}</div>
+  `;
+}
+
+function switchTab(tab) {
+  const isSignal = tab === 'signal';
+  document.getElementById('tab-signal').classList.toggle('active',  isSignal);
+  document.getElementById('tab-mail').classList.toggle('active',   !isSignal);
+  document.getElementById('signal-display').style.display  = isSignal ? 'block' : 'none';
+  document.getElementById('preview-wrap').style.display    = isSignal ? '' : 'none';
+  document.getElementById('actions').style.display         = isSignal ? 'flex' : 'none';
+  document.getElementById('classify-actions').style.display = 'none';
+  document.getElementById('mail-view').classList.toggle('show', !isSignal);
+}
+
+function setStatus(msg, type = '') {
+  const el = document.getElementById('status-msg');
+  el.textContent = msg; el.className = type;
+  clearTimeout(statusTimer);
+  statusTimer = setTimeout(() => { el.textContent = 'SYSTEM READY'; el.className = ''; }, 3000);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  CLOCK
+// ═══════════════════════════════════════════════════════════════════
+function updateClock() {
+  const n = new Date();
+  document.getElementById('clock').textContent =
+    `UTC ${String(n.getUTCHours()).padStart(2,'0')}:${String(n.getUTCMinutes()).padStart(2,'0')}:${String(n.getUTCSeconds()).padStart(2,'0')}`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ═══════════════════════════════════════════════════════════════════
+//  LOAD DATA
+// ═══════════════════════════════════════════════════════════════════
+async function loadObjects() {
+  try {
+    const resp = await fetch('./objects.json');
+    objects = await resp.json();
+    document.getElementById('obj-count').textContent = objects.length;
+    setStatus(`LOADED ${objects.length} OBJECTS FROM SDSS DR17`, 'ok');
+    drawSky();
+    deliverMessage('welcome');
+  } catch(err) {
+    setStatus('ERROR: FAILED TO LOAD objects.json', 'err');
+    console.error(err);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════════
+resizeCanvas();
+updateDishUI();
+loadObjects();
+physicsTick();
+setTimeout(() => setStatus('ANTENNA ARRAY ONLINE — USE ARROW KEYS TO AIM', 'ok'), 1200);
+</script>
+</body>
+</html>
