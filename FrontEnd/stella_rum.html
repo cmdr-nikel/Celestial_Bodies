@@ -334,14 +334,14 @@
     <div id="help-view" style="display:none; flex-direction:column; overflow-y:auto; padding:10px; font-size:11px; color:var(--muted); line-height:1.8;">
 
       <div style="color:var(--bright); letter-spacing:2px; font-size:10px; margin-bottom:8px;">TRIANGULATION</div>
-      <pre style="color:var(--dim); font-size:10px; line-height:1.4; margin-bottom:10px;">
-        A         B
-         +-------+
-          \     /
-           \   /
-            \ /
-           [(*)]
-        [TARGET]
+      <pre style="color:var(--dim); font-size:10px; line-height:1.4; margin-bottom:10px;"> <span style="color:var(--green-b)">
+        A           B
+         +---------+
+          \       /
+           \     /
+            [(*)]
+          [TARGET]
+            \  /
              \/
               + C
       </pre>
@@ -814,7 +814,7 @@ if (d01 < scanPx0*2 && d12 < scanPx0*2 && d02 < scanPx0*2) {
   ctx.strokeStyle = 'rgba(106,172,121,0.15)';
   ctx.lineWidth = 1;
   ctx.stroke();
-}
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════
