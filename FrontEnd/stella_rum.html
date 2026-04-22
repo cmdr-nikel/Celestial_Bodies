@@ -758,10 +758,12 @@ function drawDishes() {
     const isA = i === activeDish;
     const scanPx = (SCAN_RADIUS_DEG / 360) * canvas.width * mapScale;
 
+    // Scan radius circle
     ctx.beginPath(); ctx.arc(p.x, p.y, scanPx, 0, Math.PI * 2);
     ctx.strokeStyle = isA ? 'rgba(180,180,180,0.2)' : 'rgba(70,70,70,0.15)';
     ctx.lineWidth = 1; ctx.stroke();
 
+    // Crosshair lines
     const cs = isA ? 10 : 6;
     ctx.strokeStyle = isA ? 'rgba(220,220,220,0.85)' : 'rgba(90,90,90,0.5)';
     ctx.lineWidth   = isA ? 1.5 : 1;
@@ -770,50 +772,57 @@ function drawDishes() {
     ctx.moveTo(p.x, p.y - cs); ctx.lineTo(p.x, p.y + cs);
     ctx.stroke();
 
+    // Dish label [A / B / C]
     ctx.font = '10px Share Tech Mono, monospace';
     ctx.textAlign = 'left'; ctx.textBaseline = 'top';
     ctx.fillStyle = isA ? 'rgba(200,200,200,0.85)' : 'rgba(70,70,70,0.65)';
     ctx.fillText(`[${['A','B','C'][i]}]`, p.x + 8, p.y - 14);
   }
-  // Draw triangulation zone where all three dishes overlap
-const positions = dishes.map(d => skyToCanvas(dishToSky(d).ra, dishToSky(d).dec));
-const triCx = (positions[0].x + positions[1].x + positions[2].x) / 3;
-const triCy = (positions[0].y + positions[1].y + positions[2].y) / 3;
-const scanPx0 = (SCAN_RADIUS_DEG / 360) * canvas.width * mapScale;
 
-const avgDist = ((d01 + d12 + d02) / 3).toFixed(1);
-ctx.fillStyle = 'rgba(106,172,121,0.7)';
-ctx.font = '9px Share Tech Mono, monospace';
-ctx.textAlign = 'center';
-ctx.textBaseline = 'bottom';
-ctx.fillText(`∠ ${avgDist}°`, triCx, triCy - 14);
+  // Compute screen positions and centroid for all three dishes
+  const positions = dishes.map(d => skyToCanvas(dishToSky(d).ra, dishToSky(d).dec));
+  const triCx = (positions[0].x + positions[1].x + positions[2].x) / 3;
+  const triCy = (positions[0].y + positions[1].y + positions[2].y) / 3;
+  const scanPx0 = (SCAN_RADIUS_DEG / 360) * canvas.width * mapScale;
 
-// Check if all three scan circles actually overlap (rough check)
-const d01 = Math.hypot(positions[0].x-positions[1].x, positions[0].y-positions[1].y);
-const d12 = Math.hypot(positions[1].x-positions[2].x, positions[1].y-positions[2].y);
-const d02 = Math.hypot(positions[0].x-positions[2].x, positions[0].y-positions[2].y);
+  // Distances between each pair of dishes (in pixels)
+  const d01 = Math.hypot(positions[0].x - positions[1].x, positions[0].y - positions[1].y);
+  const d12 = Math.hypot(positions[1].x - positions[2].x, positions[1].y - positions[2].y);
+  const d02 = Math.hypot(positions[0].x - positions[2].x, positions[0].y - positions[2].y);
 
-if (d01 < scanPx0*2 && d12 < scanPx0*2 && d02 < scanPx0*2) {
-  // Triangulation zone — glowing center dot
-  ctx.beginPath();
-  ctx.arc(triCx, triCy, 4, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(106,172,121,0.9)';
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(triCx, triCy, 10, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(106,172,121,0.3)';
-  ctx.lineWidth = 1;
-  ctx.stroke();
+  // Only draw triangulation visuals if all three scan circles overlap
+  if (d01 < scanPx0 * 2 && d12 < scanPx0 * 2 && d02 < scanPx0 * 2) {
+    const avgDist = ((d01 + d12 + d02) / 3).toFixed(1);
 
-  // Triangle connecting the three dishes
-  ctx.beginPath();
-  ctx.moveTo(positions[0].x, positions[0].y);
-  ctx.lineTo(positions[1].x, positions[1].y);
-  ctx.lineTo(positions[2].x, positions[2].y);
-  ctx.closePath();
-  ctx.strokeStyle = 'rgba(106,172,121,0.15)';
-  ctx.lineWidth = 1;
-  ctx.stroke();
+    // Angle label above centroid
+    ctx.fillStyle = 'rgba(106,172,121,0.7)';
+    ctx.font = '9px Share Tech Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(`∠ ${avgDist}°`, triCx, triCy - 14);
+
+    // Glowing center dot
+    ctx.beginPath();
+    ctx.arc(triCx, triCy, 4, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(106,172,121,0.9)';
+    ctx.fill();
+
+    // Outer glow ring
+    ctx.beginPath();
+    ctx.arc(triCx, triCy, 10, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(106,172,121,0.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Triangle connecting the three dish positions
+    ctx.beginPath();
+    ctx.moveTo(positions[0].x, positions[0].y);
+    ctx.lineTo(positions[1].x, positions[1].y);
+    ctx.lineTo(positions[2].x, positions[2].y);
+    ctx.closePath();
+    ctx.strokeStyle = 'rgba(106,172,121,0.15)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
   }
 }
 
