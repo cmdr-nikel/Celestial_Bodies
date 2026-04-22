@@ -582,22 +582,25 @@ function drawGrid() {
 
   for (let ra = 0; ra <= 360; ra += 30) {
     const p0 = skyToCanvas(ra, -90), p1 = skyToCanvas(ra, 90);
-    ctx.strokeStyle = '#0e0e0e';
+    ctx.strokeStyle = '#1e1e1e';
     ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.stroke();
     const pm = skyToCanvas(ra, 0);
     if (pm.x > 10 && pm.x < W - 10) {
-      ctx.fillStyle = '#1e1e1e'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillStyle = '#333333';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
       ctx.fillText(`${ra}°`, pm.x, pm.y + 2);
     }
   }
+
   for (let dec = -90; dec <= 90; dec += 30) {
     const p0 = skyToCanvas(0, dec), p1 = skyToCanvas(360, dec);
-    ctx.strokeStyle = dec === 0 ? '#151515' : '#0e0e0e';
-    ctx.lineWidth   = dec === 0 ? 1.5 : 1;
+    ctx.strokeStyle = dec === 0 ? '#252525' : '#1a1a1a';
+    ctx.lineWidth = dec === 0 ? 1.5 : 1;
     ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.stroke();
     ctx.lineWidth = 1;
     if (p0.y > 10 && p0.y < H - 10) {
-      ctx.fillStyle = '#1e1e1e'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#333333';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
       ctx.fillText(`${dec > 0 ? '+' : ''}${dec}°`, 4, p0.y);
     }
   }
