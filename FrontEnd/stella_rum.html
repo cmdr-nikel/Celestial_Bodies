@@ -616,10 +616,10 @@ function drawGrid() {
   ctx.lineWidth = 1;
   ctx.font = '9px Share Tech Mono, monospace';
 
-  // Thin net 10°
+// Thin grid 10°
 for (let ra = 0; ra <= 360; ra += 10) {
-  if (ra % 30 === 0) continue; // Skipping some
-  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  if (ra % 30 === 0) continue;
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)'; // было 0.04
   ctx.lineWidth = 0.5;
   ctx.beginPath();
   let started = false;
@@ -633,8 +633,8 @@ for (let ra = 0; ra <= 360; ra += 10) {
 }
 
 for (let dec = -80; dec <= 80; dec += 10) {
-  if (dec % 30 === 0) continue; // skipping some
-  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  if (dec % 30 === 0) continue;
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)'; // было 0.04
   ctx.lineWidth = 0.5;
   ctx.beginPath();
   let started = false;
