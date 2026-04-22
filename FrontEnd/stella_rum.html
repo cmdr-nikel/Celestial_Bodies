@@ -352,6 +352,10 @@ let scoreCorrect = 0;
 let scoreWrong   = 0;
 
 let activeDish      = 0;
+
+let camRA = 180;
+let camDec = 0;
+
 let mapOffset       = { x: 0, y: 0 };
 let mapScale        = 1.0;
 let isDragging      = false;
@@ -378,8 +382,8 @@ const VEL_DRAG   = 0.72;  // friction (0-1) — lower = stops faster
 
 const dishes = [
   { az: 180.0, el: 45.0 },
-  { az: 90.0,  el: 45.0 },
-  { az: 270.0, el: 45.0 },
+  { az: 165.0, el: 45.0 },
+  { az: 195.0, el: 45.0 },
 ];
 
 const SCAN_RADIUS_DEG = 8;
@@ -402,13 +406,26 @@ window.addEventListener('resize', resizeCanvas);
 //  COORDINATE TRANSFORMS
 // ═══════════════════════════════════════════════════════════════════
 function skyToCanvas(ra, dec) {
+  const raR = ra * Math.PI / 180;
+  const decR = dec * Math.PI / 180;
+  const ox = Math.cos(decR) * Math.cos(raR);
+  const oy = Math.cos(decR) * Math.sin(raR);
+  const oz = Math.sin(decR);
+
+  const cR = camRA * Math.PI / 180;
+  const cD = camDec * Math.PI / 180;
+  const cx = Math.cos(cD) * Math.cos(cR);
+  const cy = Math.cos(cD) * Math.sin(cR);
+  const cz = Math.sin(cD);
+
+  const dot = ox*cx + oy*cy + oz*cz;
+  if (dot < 0.1) return { x: -9999, y: -9999 };
+
   const W = canvas.width, H = canvas.height;
-  const cx = W / 2 + mapOffset.x;
-  const cy = H / 2 + mapOffset.y;
-  return {
-    x: cx + ((ra - 180) / 360) * W * mapScale,
-    y: cy + (-dec / 180) * H * mapScale,
-  };
+  const scale = Math.min(W, H) * mapScale * 0.5;
+  const px = W/2 + (oy*cx - ox*cy) / (1 + dot) * scale * 2;
+  const py = H/2 - (oz - cz*dot) / (1 + dot) * scale * 2;
+  return { x: px, y: py };
 }
 
 function canvasToSky(px, py) {
@@ -489,6 +506,34 @@ function drawSky() {
         visible.push({ obj, p });
     }
   }
+
+  function drawSkyFast() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+  drawGrid();
+  ctx.font = '12px Share Tech Mono, monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (const obj of objects) {
+    const p = skyToCanvas(obj.ra, obj.dec);
+    if (p.x < -20 || p.x > W+20 || p.y < -20 || p.y > H+20) continue;
+    const alpha = neutralAlpha(obj);
+    if (classified.has(obj.id)) {
+      ctx.globalAlpha = Math.max(alpha, 0.7);
+      ctx.fillStyle = REVEALED_COLOR[obj.class] + 'aa';
+      ctx.fillText(REVEALED_CHAR[obj.class][0], p.x, p.y);
+    } else {
+      ctx.globalAlpha = alpha * 0.9;
+      ctx.fillStyle = neutralColor(obj);
+      ctx.fillText(neutralChar(obj), p.x, p.y);
+    }
+  }
+  ctx.globalAlpha = 1;
+  drawDishes();
+  updateStats();
+}
 
   const STRIP_W = 12;
   const STRIPS  = Math.ceil(W / STRIP_W);
@@ -874,18 +919,21 @@ document.addEventListener('keydown', (e) => {
 // ═══════════════════════════════════════════════════════════════════
 //  MOUSE — PAN & ZOOM
 // ═══════════════════════════════════════════════════════════════════
-canvas.addEventListener('mousedown', (e) => {
+canvas.addEventListener('mousedown', e => {
   isDragging = true;
-  dragStart  = { x: e.clientX, y: e.clientY };
-  dragOffsetStart = { ...mapOffset };
+  dragStart = { x: e.clientX, y: e.clientY };
+  dragOffsetStart = { x: camRA, y: camDec };
   canvas.style.cursor = 'grabbing';
 });
 
-document.addEventListener('mousemove', (e) => {
+document.addEventListener('mousemove', e => {
   if (!isDragging) return;
-  mapOffset.x = dragOffsetStart.x + (e.clientX - dragStart.x);
-  mapOffset.y = dragOffsetStart.y + (e.clientY - dragStart.y);
-  drawSky();
+  const dx = e.clientX - dragStart.x;
+  const dy = e.clientY - dragStart.y;
+  const sensitivity = 0.15 / mapScale;
+  camRA = (dragOffsetStart.x - dx * sensitivity + 360) % 360;
+  camDec = Math.max(-85, Math.min(85, dragOffsetStart.y + dy * sensitivity));
+  drawSkyFast();
 });
 
 document.addEventListener('mouseup', () => {
@@ -896,8 +944,7 @@ document.addEventListener('mouseup', () => {
 });
 
 canvas.style.cursor = 'crosshair';
-
-canvas.addEventListener('wheel', (e) => {
+canvas.addEventListener('wheel', e => {
   e.preventDefault();
   mapScale = Math.max(0.25, Math.min(10, mapScale * (e.deltaY < 0 ? 1.15 : 0.87)));
   scheduledRedraw();
@@ -1042,7 +1089,7 @@ function renderSignal(obj, dist) {
 //  RESET
 // ═══════════════════════════════════════════════════════════════════
 function doReset() {
-  dishes[activeDish].az = [180, 90, 270][activeDish];
+  dishes[activeDish].az = [180, 165, 195][activeDish];
   dishes[activeDish].el = 45;
   updateDishUI();
   scheduledRedraw();
