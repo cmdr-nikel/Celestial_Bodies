@@ -619,7 +619,7 @@ function drawGrid() {
 // Thin grid 10°
 for (let ra = 0; ra <= 360; ra += 10) {
   if (ra % 30 === 0) continue;
-  ctx.strokeStyle = 'rgba(255,255,255,0.08)'; // было 0.04
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)'; // было 0.04
   ctx.lineWidth = 0.5;
   ctx.beginPath();
   let started = false;
@@ -634,7 +634,7 @@ for (let ra = 0; ra <= 360; ra += 10) {
 
 for (let dec = -80; dec <= 80; dec += 10) {
   if (dec % 30 === 0) continue;
-  ctx.strokeStyle = 'rgba(255,255,255,0.08)'; // было 0.04
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)'; // было 0.04
   ctx.lineWidth = 0.5;
   ctx.beginPath();
   let started = false;
@@ -670,7 +670,7 @@ ctx.lineWidth = 1; // refresh
 
   // Dec lines
   for (let dec = -60; dec <= 60; dec += 30) {
-    ctx.strokeStyle = dec === 0 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.10)';
+    ctx.strokeStyle = dec === 0 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.12)';
     ctx.lineWidth = dec === 0 ? 1.5 : 1;
     ctx.beginPath();
     let started = false;
