@@ -621,6 +621,38 @@ function drawGrid() {
   ctx.lineWidth = 1;
   ctx.font = '9px Share Tech Mono, monospace';
 
+  // Thin net 10°
+for (let ra = 0; ra <= 360; ra += 10) {
+  if (ra % 30 === 0) continue; // Skipping some
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  let started = false;
+  for (let dec = -80; dec <= 80; dec += 5) {
+    const p = skyToCanvas(ra, dec);
+    if (p.x < -100 || p.x > W+100 || p.y < -100 || p.y > H+100) { started = false; continue; }
+    if (!started) { ctx.moveTo(p.x, p.y); started = true; }
+    else ctx.lineTo(p.x, p.y);
+  }
+  ctx.stroke();
+}
+
+for (let dec = -80; dec <= 80; dec += 10) {
+  if (dec % 30 === 0) continue; // skipping some
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  let started = false;
+  for (let ra = 0; ra <= 360; ra += 5) {
+    const p = skyToCanvas(ra, dec);
+    if (p.x < -100 || p.x > W+100 || p.y < -100 || p.y > H+100) { started = false; continue; }
+    if (!started) { ctx.moveTo(p.x, p.y); started = true; }
+    else ctx.lineTo(p.x, p.y);
+  }
+  ctx.stroke();
+}
+ctx.lineWidth = 1; // refresh
+
   // RA lines
   for (let ra = 0; ra <= 360; ra += 30) {
     ctx.strokeStyle = 'rgba(255,255,255,0.12)';
