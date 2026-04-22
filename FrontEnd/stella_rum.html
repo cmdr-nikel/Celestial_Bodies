@@ -378,8 +378,8 @@ const VEL_DRAG   = 0.72;  // friction (0-1) — lower = stops faster
 
 const dishes = [
   { az: 180.0, el: 45.0 },
-  { az: 120.0, el: 45.0 },
-  { az: 240.0, el: 45.0 },
+  { az: 90.0,  el: 45.0 },
+  { az: 270.0, el: 45.0 },
 ];
 
 const SCAN_RADIUS_DEG = 8;
@@ -1042,7 +1042,7 @@ function renderSignal(obj, dist) {
 //  RESET
 // ═══════════════════════════════════════════════════════════════════
 function doReset() {
-  dishes[activeDish].az = [180, 120, 240][activeDish];
+  dishes[activeDish].az = [180, 90, 270][activeDish];
   dishes[activeDish].el = 45;
   updateDishUI();
   scheduledRedraw();
