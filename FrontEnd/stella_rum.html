@@ -369,10 +369,21 @@
   </aside>
 
   <footer id="statusbar">
-    <div id="status-msg">SYSTEM READY</div>
-    <div id="status-coords">RA — &nbsp; DEC —</div>
-    <div>SDSS / SLOAN DIGITAL SKY SURVEY<span class="blink" style="margin-left:6px">_</span></div>
-  </footer>
+  <div id="status-msg">SYSTEM READY</div>
+  <div id="status-coords">RA — &nbsp; DEC —</div>
+
+  <div>
+    SDSS / SLOAN DIGITAL SKY SURVEY
+    <span class="blink" style="margin-left:6px">_</span>
+
+    <button class="btn" onclick="toggleAmbient()" style="margin-left:10px;">
+      [ ∿ ]
+    </button>
+  </div>
+</footer>
+
+  </div>
+</footer>
 
 </div>
 <script>
@@ -1052,6 +1063,15 @@ document.addEventListener('keydown', (e) => {
 // ═══════════════════════════════════════════════════════════════════
 //  MOUSE — PAN & ZOOM
 // ═══════════════════════════════════════════════════════════════════
+
+// ── FIRST USER INTERACTION → START AMBIENT ────────────
+document.addEventListener('click', () => {
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+  loadAmbient();
+}, { once: true });
+
 canvas.addEventListener('mousedown', e => {
   isDragging = true;
   dragStart = { x: e.clientX, y: e.clientY };
@@ -1411,6 +1431,45 @@ function switchTab(tab) {
 // ═══════════════════════════════════════════════════════════════════
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
+// ── AMBIENT MUSIC ─────────────────────────────────────
+let ambientSource = null;
+let ambientGain = null;
+
+async function loadAmbient() {
+  if (ambientSource) return; // to avoid double-launch
+
+  const response = await fetch('ambient.mp3');
+  const arrayBuffer = await response.arrayBuffer();
+  const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+  ambientSource = audioCtx.createBufferSource();
+  ambientSource.buffer = audioBuffer;
+  ambientSource.loop = true;
+
+  ambientGain = audioCtx.createGain();
+
+  // start from zero (fade-in)
+  ambientGain.gain.setValueAtTime(0, audioCtx.currentTime);
+  ambientGain.gain.linearRampToValueAtTime(0.25, audioCtx.currentTime + 3);
+
+  ambientSource.connect(ambientGain);
+  ambientGain.connect(audioCtx.destination);
+
+  ambientSource.start(0);
+}
+
+function stopAmbient() {
+  if (!ambientSource) return;
+
+  // fade out
+  ambientGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 1);
+
+  setTimeout(() => {
+    ambientSource.stop();
+    ambientSource = null;
+  }, 1000);
+}
+
 function playTone(freq, duration, type = 'sine', volume = 0.15, delay = 0) {
   const osc  = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
@@ -1480,6 +1539,27 @@ function setStatus(msg, type = '') {
   clearTimeout(statusTimer);
   statusTimer = setTimeout(() => { el.textContent = 'SYSTEM READY'; el.className = ''; }, 3000);
 }
+
+
+// ── AMBIENT CONTROL ─────────────────────────
+function toggleAmbient() {
+  const btn = document.querySelector('[onclick="toggleAmbient()"]');
+
+  // activationg audio-content
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+
+  if (!ambientSource) {
+    loadAmbient();
+    btn.textContent = '[ ≋ ]'; // on
+  } else {
+    stopAmbient();
+    btn.textContent = '[ ∿ ]'; // off
+  }
+}
+
+
 
 // ═══════════════════════════════════════════════════════════════════
 //  CLOCK
