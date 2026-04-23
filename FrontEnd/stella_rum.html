@@ -221,7 +221,7 @@
 .mail-item.unread .mail-from { color: var(--white); }
 .mail-from { color: var(--text); letter-spacing: 1px; }
 .mail-subj { color: var(--muted); font-size: 10px; }
-.mail-new  { color: var(--green-b); font-size: 9px; float: right; }
+.mail-new  { color: var(--green-b); font-size: 9px; float: right; } k
 
 #mail-body {
   flex: 1; overflow-y: auto;
@@ -519,51 +519,38 @@ function seededRandom(seed) {
 // ═══════════════════════════════════════════════════════════════════
 //  DRAW SKY — progressive left-to-right scan
 // ═══════════════════════════════════════════════════════════════════
-let scanAnimId = null;
+// ═══════════════════════════════════════════════════════════════════
+//  DRAW SKY — progressive left-to-right scan
+// ═══════════════════════════════════════════════════════════════════
+let scanAnimId  = null;
+let scanDebounce = null;  // debounce timer
 
-function drawSky() {
-  if (scanAnimId) { cancelAnimationFrame(scanAnimId); scanAnimId = null; }
-
+// Fast redraw — no scan animation, instant render
+function drawSkyFast() {
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, W, H);
-
   drawGrid();
   drawMilkyWay();
   drawNebulae();
-
-  // Collect visible objects — triple RA pass for seamless wrap
-  const visible = [];
-  for (const obj of objects) {
-    for (const offset of [-360, 0, 360]) {
-      const p = skyToCanvas(obj.ra + offset, obj.dec);
-      if (p.x > -20 && p.x < W + 20 && p.y > -20 && p.y < H + 20)
-        visible.push({ obj, p });
-    }
-  }
-
-  function drawSkyFast() {
-  const W = canvas.width, H = canvas.height;
-  ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, W, H);
-  drawGrid();
   ctx.font = '12px Share Tech Mono, monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   for (const obj of objects) {
-    const p = skyToCanvas(obj.ra, obj.dec);
-    if (p.x < -20 || p.x > W+20 || p.y < -20 || p.y > H+20) continue;
-    const alpha = neutralAlpha(obj);
-    if (classified.has(obj.id)) {
-      ctx.globalAlpha = Math.max(alpha, 0.7);
-      ctx.fillStyle = REVEALED_COLOR[obj.class] + 'aa';
-      ctx.fillText(REVEALED_CHAR[obj.class][0], p.x, p.y);
-    } else {
-      ctx.globalAlpha = alpha * 0.9;
-      ctx.fillStyle = neutralColor(obj);
-      ctx.fillText(neutralChar(obj), p.x, p.y);
+    for (const offset of [-360, 0, 360]) {
+      const p = skyToCanvas(obj.ra + offset, obj.dec);
+      if (p.x < -20 || p.x > W+20 || p.y < -20 || p.y > H+20) continue;
+      const alpha = neutralAlpha(obj);
+      if (classified.has(obj.id)) {
+        ctx.globalAlpha = Math.max(alpha, 0.7);
+        ctx.fillStyle = REVEALED_COLOR[obj.class] + 'aa';
+        ctx.fillText(REVEALED_CHAR[obj.class][0], p.x, p.y);
+      } else {
+        ctx.globalAlpha = alpha * 0.9;
+        ctx.fillStyle = neutralColor(obj);
+        ctx.fillText(neutralChar(obj), p.x, p.y);
+      }
     }
   }
   ctx.globalAlpha = 1;
@@ -571,41 +558,72 @@ function drawSky() {
   updateStats();
 }
 
-  const STRIP_W = 12;
-  const STRIPS  = Math.ceil(W / STRIP_W);
-  let   strip   = 0;
+// Full scan animation — debounced, fires only after movement stops
+function drawSky() {
+  // Cancel any running scan animation
+  if (scanAnimId) { cancelAnimationFrame(scanAnimId); scanAnimId = null; }
 
-  function scanStep() {
-    const x0 = strip * STRIP_W, x1 = x0 + STRIP_W;
-    ctx.font = '12px Share Tech Mono, monospace';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  // Show fast frame immediately while user is moving
+  drawSkyFast();
 
-    for (const { obj, p } of visible) {
-      if (p.x < x0 || p.x >= x1) continue;
-      const alpha = neutralAlpha(obj);
-      if (classified.has(obj.id)) {
-        const arr  = REVEALED_CHAR[obj.class] || ['·'];
-        const seed = parseInt(obj.id.replace('sdss_','')) % arr.length;
-        ctx.globalAlpha = Math.max(alpha, 0.7);
-        ctx.fillStyle   = REVEALED_COLOR[obj.class] || '#aaa';
-        ctx.fillText(arr[seed], p.x, p.y);
-      } else {
-        ctx.globalAlpha = alpha * 0.9;
-        ctx.fillStyle   = neutralColor(obj);
-        ctx.fillText(neutralChar(obj), p.x, p.y);
+  // Schedule full scan after movement stops
+  clearTimeout(scanDebounce);
+  scanDebounce = setTimeout(() => {
+    if (scanAnimId) { cancelAnimationFrame(scanAnimId); scanAnimId = null; }
+
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    drawGrid();
+    drawMilkyWay();
+    drawNebulae();
+
+    const visible = [];
+    for (const obj of objects) {
+      for (const offset of [-360, 0, 360]) {
+        const p = skyToCanvas(obj.ra + offset, obj.dec);
+        if (p.x > -20 && p.x < W+20 && p.y > -20 && p.y < H+20)
+          visible.push({ obj, p });
       }
     }
-    ctx.globalAlpha = 1;
-    strip++;
-    if (strip < STRIPS) {
-      scanAnimId = requestAnimationFrame(scanStep);
-    } else {
-      scanAnimId = null;
-      drawDishes();
-      updateStats();
+
+    const STRIP_W = 12;
+    const STRIPS  = Math.ceil(W / STRIP_W);
+    let   strip   = 0;
+
+    function scanStep() {
+      const x0 = strip * STRIP_W, x1 = x0 + STRIP_W;
+      ctx.font = '12px Share Tech Mono, monospace';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+      for (const { obj, p } of visible) {
+        if (p.x < x0 || p.x >= x1) continue;
+        const alpha = neutralAlpha(obj);
+        if (classified.has(obj.id)) {
+          const arr  = REVEALED_CHAR[obj.class] || ['·'];
+          const seed = parseInt(obj.id.replace('sdss_','')) % arr.length;
+          ctx.globalAlpha = Math.max(alpha, 0.7);
+          ctx.fillStyle   = REVEALED_COLOR[obj.class] || '#aaa';
+          ctx.fillText(arr[seed], p.x, p.y);
+        } else {
+          ctx.globalAlpha = alpha * 0.9;
+          ctx.fillStyle   = neutralColor(obj);
+          ctx.fillText(neutralChar(obj), p.x, p.y);
+        }
+      }
+      ctx.globalAlpha = 1;
+      strip++;
+      if (strip < STRIPS) {
+        scanAnimId = requestAnimationFrame(scanStep);
+      } else {
+        scanAnimId = null;
+        drawDishes();
+        updateStats();
+      }
     }
-  }
-  scanStep();
+    scanStep();
+  }, 300); // tune if needed
 }
 
 // ═══════════════════════════════════════════════════════════════════
