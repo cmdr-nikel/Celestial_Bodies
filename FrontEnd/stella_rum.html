@@ -970,15 +970,26 @@ function drawDishes() {
     const isA = i === activeDish;
     const scanPx = (SCAN_RADIUS_DEG / 360) * canvas.width * mapScale;
 
+    // Pulsing ring on active dish
+  if (isA) {
+  const pulse = (Math.sin(Date.now() * 0.004) + 1) / 2; // 0..1
+  const pr = scanPx * (0.85 + pulse * 0.35);
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, pr, 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(200,220,255,${0.15 + pulse * 0.35})`;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  }
+
     // Scan radius circle
     ctx.beginPath(); ctx.arc(p.x, p.y, scanPx, 0, Math.PI * 2);
-    ctx.strokeStyle = isA ? 'rgba(180,180,180,0.2)' : 'rgba(70,70,70,0.15)';
+    ctx.strokeStyle = isA ? 'rgba(180,180,180,0.2)' : 'rgba(100,130,160,0.25)';
     ctx.lineWidth = 1; ctx.stroke();
 
     // Crosshair lines
     const cs = isA ? 10 : 6;
-    ctx.strokeStyle = isA ? 'rgba(220,220,220,0.85)' : 'rgba(90,90,90,0.5)';
-    ctx.lineWidth   = isA ? 1.5 : 1;
+    ctx.strokeStyle = isA ? 'rgba(220,220,220,0.85)' : 'rgba(140,160,180,0.65)';
+    ctx.lineWidth = isA ? 1.5 : 1;
     ctx.beginPath();
     ctx.moveTo(p.x - cs, p.y); ctx.lineTo(p.x + cs, p.y);
     ctx.moveTo(p.x, p.y - cs); ctx.lineTo(p.x, p.y + cs);
@@ -987,7 +998,7 @@ function drawDishes() {
     // Dish label [A / B / C]
     ctx.font = '10px Share Tech Mono, monospace';
     ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    ctx.fillStyle = isA ? 'rgba(200,200,200,0.85)' : 'rgba(70,70,70,0.65)';
+    ctx.fillStyle = isA ? 'rgba(200,200,200,0.85)' : 'rgba(140,165,190,0.75)';
     ctx.fillText(`[${['A','B','C'][i]}]`, p.x + 8, p.y - 14);
   }
 
@@ -1032,10 +1043,62 @@ function drawDishes() {
     ctx.lineTo(positions[1].x, positions[1].y);
     ctx.lineTo(positions[2].x, positions[2].y);
     ctx.closePath();
-    ctx.strokeStyle = 'rgba(106,172,121,0.15)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(106,172,121,0.55)';
+    ctx.lineWidth = 1.5;
     ctx.stroke();
   }
+
+  // Off-screen arrow indicator for active dish
+const ad   = dishes[activeDish];
+const ap   = skyToCanvas(dishToSky(ad).ra, dishToSky(ad).dec);
+const W    = canvas.width, H = canvas.height;
+const margin = 28;
+
+if (ap.x < 0 || ap.x > W || ap.y < 0 || ap.y > H) {
+  // Clamp arrow to canvas edge
+  const cx = W / 2, cy = H / 2;
+  const dx = ap.x - cx, dy = ap.y - cy;
+  const len = Math.hypot(dx, dy);
+  const nx = dx / len, ny = dy / len;
+
+  // Find edge intersection
+  const tx = nx > 0 ? (W - margin - cx) / nx : (-cx + margin) / nx;
+  const ty = ny > 0 ? (H - margin - cy) / ny : (-cy + margin) / ny;
+  const t = Math.min(Math.abs(tx), Math.abs(ty));
+  const ex = cx + nx * t;
+  const ey = cy + ny * t;
+
+  // Draw arrow
+  const angle = Math.atan2(ny, nx);
+  const as = 9; // arrow size
+  ctx.save();
+  ctx.translate(ex, ey);
+  ctx.rotate(angle);
+
+  // Pulsing opacity
+  const op = 0.5 + (Math.sin(Date.now() * 0.005) + 1) * 0.25;
+  ctx.strokeStyle = `rgba(200,220,255,${op})`;
+  ctx.fillStyle = `rgba(200,220,255,${op * 0.4})`;
+  ctx.lineWidth = 1.5;
+
+  ctx.beginPath();
+  ctx.moveTo(as, 0);
+  ctx.lineTo(-as, -as * 0.6);
+  ctx.lineTo(-as * 0.4, 0);
+  ctx.lineTo(-as, as * 0.6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Dish label next to arrow
+  ctx.font = '9px Share Tech Mono, monospace';
+  ctx.fillStyle = `rgba(180,200,220,${op})`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(['A', 'B', 'C'][activeDish], -as * 2, 0);
+
+  ctx.restore();
+}
 }
 
 // ═══════════════════════════════════════════════════════════════════
