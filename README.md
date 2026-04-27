@@ -1,7 +1,7 @@
 # STELLaRUM — Observation Terminal
 ### Stellar Classification · SDSS DR17 · Interactive Frontend
 
-> *A university ML project that classifies stars, galaxies, and quasars from the Sloan Digital Sky Survey — wrapped in a browser-based radio telescope game inspired by [Voices of the Void](https://votv.dev/).*
+> *A university ML project that classifies stars, galaxies, and quasars from the Sloan Digital Sky Survey — wrapped in a browser-based radio telescope game inspired by [Voices of the Void](https://mrdrnose.itch.io/votv).*
 
 ---
 
