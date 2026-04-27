@@ -1,4 +1,4 @@
-# 🌌 Stellar Classification — SDSS DR17
+# 🌌 Stellar Classification — SDSS DR17 (NEEDED RENEWAL)
 
 Supervised machine learning project classifying astronomical objects from the Sloan Digital Sky Survey (SDSS DR17) into three classes: **STAR**, **GALAXY**, and **QSO** (quasi-stellar objects / quasars).
 
