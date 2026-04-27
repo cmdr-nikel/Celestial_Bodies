@@ -312,6 +312,76 @@
 .mail-body-text { color: var(--text); white-space: pre-wrap; }
 #mail-empty { color: var(--dim); font-size: 10px; padding: 12px 10px; }
 
+/* ══ SPLASH ════════════════════════════════════════════════ */
+#splash {
+  position: fixed; inset: 0; z-index: 999999;
+  background: #000;
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity 0.9s ease;
+  cursor: pointer;
+}
+#splash.splash-out { opacity: 0; pointer-events: none; }
+
+#splash-bg { position: absolute; inset: 0; z-index: 0; }
+
+#splash-ring {
+  position: absolute; inset: 0;
+  z-index: 1; pointer-events: none;
+}
+.ring-star {
+  position: absolute;
+  font-family: var(--font-mono); font-size: 13px;
+  color: #b0c4ee;
+  transform: translate(-50%, -50%);
+  animation: ringTwinkle 3s ease-in-out infinite;
+}
+
+#splash-content {
+  position: relative; z-index: 2;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 18px;
+}
+
+#splash-art svg {
+  display: block;
+  width: min(700px, 90vw);
+  filter: drop-shadow(0 0 18px rgba(100,140,255,0.12));
+}
+
+#splash-title {
+  font-family: var(--font-vt); font-size: 56px;
+  letter-spacing: 10px; color: #dedede;
+  text-shadow: 0 0 24px rgba(140,170,255,0.35);
+  margin-top: 4px;
+}
+.splash-a { color: #3a3a3a; text-shadow: none; }
+
+#splash-sub {
+  font-family: var(--font-mono); font-size: 10px;
+  letter-spacing: 3px; color: #383838;
+  margin-top: -10px;
+}
+#splash-prompt {
+  font-family: var(--font-mono); font-size: 11px;
+  letter-spacing: 2px; color: #6aac79;
+  animation: blink-fast 1.2s step-end infinite;
+  margin-top: 8px;
+}
+
+/* light blink cycles — all offset so they feel independent */
+@keyframes blkA { 0%,100%{opacity:1} 45%,55%{opacity:0.1} }
+@keyframes blkB { 0%,100%{opacity:1} 20%,35%{opacity:0.1} }
+@keyframes blkC { 0%,100%{opacity:1} 65%,78%{opacity:0.1} }
+.blink-a { animation: blkA 2.2s ease-in-out infinite; }
+.blink-b { animation: blkB 1.8s ease-in-out infinite; }
+.blink-c { animation: blkC 2.7s ease-in-out infinite; }
+
+/* ring star twinkle */
+@keyframes ringTwinkle {
+  0%, 100% { opacity: 0.35; transform: translate(-50%, -50%) scale(1);   }
+  50%      { opacity: 1;    transform: translate(-50%, -50%) scale(1.4); }
+}
+
 </style>
 </head>
 <body>
@@ -1734,6 +1804,288 @@ async function loadObjects() {
   setInterval(drawNoise, 100);
 })();
 
+
+// ── SPLASH ────────────────────────────────────────────────────────────────────
+function initSplash() {
+  const el = document.createElement('div');
+  el.id = 'splash';
+
+  const bg = document.createElement('canvas');
+  bg.id = 'splash-bg';
+  el.appendChild(bg);
+
+  const ring = document.createElement('div');
+  ring.id = 'splash-ring';
+  el.appendChild(ring);
+
+  const wrap = document.createElement('div');
+  wrap.id = 'splash-content';
+
+  // ── SVG ILLUSTRATION ──────────────────────────────────────────────────────
+  const svgWrap = document.createElement('div');
+  svgWrap.id = 'splash-art';
+  svgWrap.innerHTML = `<svg viewBox="0 0 760 460" xmlns="http://www.w3.org/2000/svg">
+<style>
+  .rim  { stroke:#607888; stroke-width:2.2; fill:none; }
+  .ring { stroke:#3a5262; stroke-width:1.2; fill:none; }
+  .rib  { stroke:#1e2e3a; stroke-width:0.8; fill:none; }
+  .str  { stroke:#3e5668; stroke-width:1.5; fill:none; }
+  .mnt  { stroke:#273238; stroke-width:1.3; fill:none; }
+  .brc  { stroke:#1a2630; stroke-width:0.8; fill:none; }
+  .for  { fill:#030a14; stroke:#4a7a9b; stroke-width:1.6; }
+</style>
+
+<!-- Subtle radial glow -->
+<radialGradient id="dg" cx="47%" cy="42%" r="38%">
+  <stop offset="0%"   stop-color="#081828" stop-opacity="0.5"/>
+  <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+</radialGradient>
+<ellipse cx="355" cy="185" rx="230" ry="210" fill="url(#dg)"/>
+
+<!-- ═══ DISH — dominant, tilted upward ═══ -->
+<g transform="translate(355,192) rotate(-10)">
+
+  <!-- Main rim -->
+  <ellipse class="rim" rx="178" ry="170"/>
+
+  <!-- Structural rings -->
+  <ellipse class="ring" rx="120" ry="114"/>
+  <ellipse class="ring" rx="58"  ry="55"/>
+
+  <!-- 20 radial ribs -->
+  <g class="rib">
+    <line x1="0"    y1="-170" x2="0"    y2="0"/>
+    <line x1="44"   y1="-165" x2="0"    y2="0"/>
+    <line x1="85"   y1="-148" x2="0"    y2="0"/>
+    <line x1="122"  y1="-120" x2="0"    y2="0"/>
+    <line x1="150"  y1="-84"  x2="0"    y2="0"/>
+    <line x1="166"  y1="-42"  x2="0"    y2="0"/>
+    <line x1="170"  y1="0"    x2="0"    y2="0"/>
+    <line x1="166"  y1="42"   x2="0"    y2="0"/>
+    <line x1="150"  y1="84"   x2="0"    y2="0"/>
+    <line x1="122"  y1="120"  x2="0"    y2="0"/>
+    <line x1="85"   y1="148"  x2="0"    y2="0"/>
+    <line x1="44"   y1="165"  x2="0"    y2="0"/>
+    <line x1="-44"  y1="165"  x2="0"    y2="0"/>
+    <line x1="-85"  y1="148"  x2="0"    y2="0"/>
+    <line x1="-122" y1="120"  x2="0"    y2="0"/>
+    <line x1="-150" y1="84"   x2="0"    y2="0"/>
+    <line x1="-170" y1="0"    x2="0"    y2="0"/>
+    <line x1="-150" y1="-84"  x2="0"    y2="0"/>
+    <line x1="-122" y1="-120" x2="0"    y2="0"/>
+    <line x1="-85"  y1="-148" x2="0"    y2="0"/>
+    <line x1="-44"  y1="-165" x2="0"    y2="0"/>
+  </g>
+
+  <!-- 4 feed-horn support struts -->
+  <line class="str" x1="0"    y1="-170" x2="0"   y2="-50"/>
+  <line class="str" x1="170"  y1="0"    x2="24"  y2="-36"/>
+  <line class="str" x1="-170" y1="0"    x2="-24" y2="-36"/>
+  <line class="str" x1="0"    y1="170"  x2="0"   y2="-20"/>
+  <!-- Diagonal braces between struts -->
+  <line class="brc" x1="88"   y1="-84"  x2="12"  y2="-44"/>
+  <line class="brc" x1="-88"  y1="-84"  x2="-12" y2="-44"/>
+
+  <!-- Feed horn / Cassegrain sub-reflector -->
+  <rect class="str" x="-27" y="-58" width="54" height="36" rx="3"/>
+  <ellipse class="ring" cx="0" cy="-40" rx="17" ry="13"/>
+  <line class="brc" x1="-27" y1="-58" x2="27" y2="-22"/>
+  <line class="brc" x1="27"  y1="-58" x2="-27" y2="-22"/>
+
+  <!-- Nav lights -->
+  <circle fill="#cc2222" r="5" cx="-174" cy="5">
+    <animate attributeName="opacity" values="1;0.04;1" dur="2.1s" begin="0.3s" repeatCount="indefinite"/>
+  </circle>
+  <circle fill="#cc2222" r="5" cx="174" cy="5">
+    <animate attributeName="opacity" values="1;0.04;1" dur="1.85s" begin="0.9s" repeatCount="indefinite"/>
+  </circle>
+  <circle fill="#22bb44" r="6" cx="0" cy="-40">
+    <animate attributeName="opacity" values="1;0.04;1" dur="2.5s" begin="0.1s" repeatCount="indefinite"/>
+  </circle>
+  <circle fill="#bbaa22" r="4" cx="0" cy="-170">
+    <animate attributeName="opacity" values="1;0.12;1" dur="3.2s" begin="0.7s" repeatCount="indefinite"/>
+  </circle>
+</g>
+
+<!-- ═══ ELEVATION YOKE — U-frame holding the dish ═══ -->
+<g class="mnt">
+  <!-- Left arm -->
+  <line x1="192" y1="192" x2="230" y2="316"/>
+  <line x1="208" y1="190" x2="246" y2="314"/>
+  <line class="brc" x1="195" y1="214" x2="210" y2="244"/>
+  <line class="brc" x1="210" y1="214" x2="195" y2="244"/>
+  <line class="brc" x1="198" y1="252" x2="214" y2="282"/>
+  <line class="brc" x1="214" y1="252" x2="198" y2="282"/>
+
+  <!-- Right arm -->
+  <line x1="510" y1="192" x2="474" y2="316"/>
+  <line x1="494" y1="190" x2="458" y2="314"/>
+  <line class="brc" x1="506" y1="214" x2="490" y2="244"/>
+  <line class="brc" x1="490" y1="214" x2="506" y2="244"/>
+  <line class="brc" x1="502" y1="252" x2="485" y2="282"/>
+  <line class="brc" x1="485" y1="252" x2="502" y2="282"/>
+
+  <!-- Elevation axis beam -->
+  <rect x="230" y="312" width="244" height="20" rx="2"/>
+  <line class="brc" x1="230" y1="322" x2="474" y2="322"/>
+
+  <!-- ═══ AZIMUTH BOX — the big rotating platform ═══ -->
+  <rect x="256" y="332" width="200" height="68" rx="2"/>
+  <line class="brc" x1="256" y1="332" x2="456" y2="400"/>
+  <line class="brc" x1="456" y1="332" x2="256" y2="400"/>
+  <line class="brc" x1="256" y1="355" x2="456" y2="355"/>
+  <line class="brc" x1="256" y1="378" x2="456" y2="378"/>
+
+  <!-- Azimuth rotation ring -->
+  <ellipse cx="356" cy="402" rx="120" ry="14"/>
+  <line class="brc" x1="236" y1="402" x2="476" y2="402"/>
+
+  <!-- ═══ MAIN PEDESTAL ═══ -->
+  <rect x="310" y="415" width="92" height="75"/>
+  <!-- Cross-bracing -->
+  <line class="brc" x1="310" y1="428" x2="402" y2="462"/>
+  <line class="brc" x1="402" y1="428" x2="310" y2="462"/>
+  <line class="brc" x1="310" y1="460" x2="402" y2="490"/>
+  <line class="brc" x1="402" y1="460" x2="310" y2="490"/>
+  <!-- Foundation -->
+  <rect x="288" y="488" width="136" height="10" rx="1"/>
+
+  <!-- ═══ COUNTERWEIGHT ARM / SECONDARY BOX (right side, RT-64 specific) ═══ -->
+  <rect x="456" y="346" width="58" height="52" rx="3"/>
+  <ellipse cx="485" cy="346" rx="29" ry="8"/>
+  <ellipse cx="485" cy="398" rx="29" ry="8"/>
+  <line class="brc" x1="456" y1="346" x2="514" y2="398"/>
+  <line class="brc" x1="514" y1="346" x2="456" y2="398"/>
+  <!-- Connecting arm to main box -->
+  <line x1="456" y1="370" x2="456" y2="370"/>
+</g>
+
+<!-- Ground horizon line -->
+<line x1="0" y1="460" x2="760" y2="460" stroke="#1e3040" stroke-width="1.2"/>
+<!-- Subtle ground glow -->
+<rect x="0" y="455" width="760" height="5" fill="url(#gg)" opacity="0.4"/>
+<linearGradient id="gg" x1="0" y1="0" x2="0" y2="1">
+  <stop offset="0%" stop-color="#2a5070" stop-opacity="0.6"/>
+  <stop offset="100%" stop-color="#000" stop-opacity="0"/>
+</linearGradient>
+
+<!-- Pedestal extended to ground -->
+<g class="mnt">
+  <!-- Main column continued down -->
+  <rect x="310" y="415" width="92" height="45"/>
+  <line class="brc" x1="310" y1="428" x2="402" y2="460"/>
+  <line class="brc" x1="402" y1="428" x2="310" y2="460"/>
+
+  <!-- Wide base plate -->
+  <rect x="264" y="448" width="184" height="12" rx="1"/>
+
+  <!-- Foundation anchor bolts -->
+  <line class="brc" x1="272" y1="460" x2="272" y2="455"/>
+  <line class="brc" x1="290" y1="460" x2="290" y2="455"/>
+  <line class="brc" x1="310" y1="460" x2="310" y2="455"/>
+  <line class="brc" x1="356" y1="460" x2="356" y2="455"/>
+  <line class="brc" x1="402" y1="460" x2="402" y2="455"/>
+  <line class="brc" x1="422" y1="460" x2="422" y2="455"/>
+  <line class="brc" x1="440" y1="460" x2="440" y2="455"/>
+
+  <!-- Cable conduits along ground -->
+  <line x1="448" y1="456" x2="600" y2="456" stroke="#1a2e3c" stroke-width="1"/>
+  <line x1="264" y1="456" x2="140" y2="456" stroke="#1a2e3c" stroke-width="1"/>
+
+  <!-- Small equipment box left -->
+  <rect x="130" y="446" width="28" height="14" rx="1"/>
+  <line class="brc" x1="130" y1="446" x2="158" y2="460"/>
+  <line class="brc" x1="158" y1="446" x2="130" y2="460"/>
+
+  <!-- Small equipment box right -->
+  <rect x="598" y="446" width="28" height="14" rx="1"/>
+  <line class="brc" x1="598" y1="446" x2="626" y2="460"/>
+  <line class="brc" x1="626" y1="446" x2="598" y2="460"/>
+</g>
+</svg>`;
+  wrap.appendChild(svgWrap);
+
+  // ── TITLE ─────────────────────────────────────────────────────────────────
+  const title = document.createElement('div');
+  title.id = 'splash-title';
+  title.innerHTML = `STELL<span class="splash-a">A</span>RUM`;
+  wrap.appendChild(title);
+
+  const sub = document.createElement('div');
+  sub.id = 'splash-sub';
+  sub.textContent = 'OBSERVATION TERMINAL  ·  SDSS DR17';
+  wrap.appendChild(sub);
+
+  const prompt = document.createElement('div');
+  prompt.id = 'splash-prompt';
+  prompt.textContent = '[ PRESS ANY KEY TO BEGIN ]';
+  wrap.appendChild(prompt);
+
+  el.appendChild(wrap);
+  document.body.prepend(el);
+
+  // ── BACKGROUND STAR CANVAS ────────────────────────────────────────────────
+  bg.width = window.innerWidth;
+  bg.height = window.innerHeight;
+  const bCtx = bg.getContext('2d');
+  const stars = Array.from({ length: 240 }, () => ({
+    x: Math.random() * bg.width,
+    y: Math.random() * bg.height,
+    r: Math.random() * 1.4 + 0.2,
+    a: Math.random(),
+    da: (Math.random() * 0.006 + 0.002) * (Math.random() < 0.5 ? 1 : -1),
+  }));
+
+  function drawBg() {
+    if (!document.getElementById('splash')) return;
+    bCtx.fillStyle = '#000';
+    bCtx.fillRect(0, 0, bg.width, bg.height);
+    for (const s of stars) {
+      s.a += s.da;
+      if (s.a >= 1)    { s.a = 1;    s.da = -s.da; }
+      if (s.a <= 0.07) { s.a = 0.07; s.da = -s.da; }
+      bCtx.beginPath();
+      bCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      bCtx.fillStyle = `rgba(190,210,255,${s.a.toFixed(2)})`;
+      bCtx.fill();
+    }
+    requestAnimationFrame(drawBg);
+  }
+  drawBg();
+
+  // ── STAR RING ─────────────────────────────────────────────────────────────
+  const W = window.innerWidth, H = window.innerHeight;
+  const cx = W / 2, cy = H / 2 - 20;
+  const rx2 = Math.min(W, H) * 0.42;
+  const ry2 = rx2;
+  const ringChars = ['✦', '·', '*', '⊹', '˖', '✧', '+'];
+
+  for (let i = 0; i < 80; i++) {
+    const angle = (i / 80) * Math.PI * 2;
+    const s = document.createElement('span');
+    s.className = 'ring-star';
+    s.textContent = ringChars[i % ringChars.length];
+    s.style.left = (cx + rx2 * Math.cos(angle)) + 'px';
+    s.style.top  = (cy + ry2 * Math.sin(angle)) + 'px';
+    s.style.animationDelay = (Math.random() * 4).toFixed(2) + 's';
+    ring.appendChild(s);
+  }
+
+  // ── DISMISS ───────────────────────────────────────────────────────────────
+  function dismiss() {
+    if (typeof audioCtx !== 'undefined' && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    el.classList.add('splash-out');
+    setTimeout(() => el.remove(), 950);
+  }
+
+  setTimeout(() => {
+    document.addEventListener('keydown', dismiss, { once: true });
+    el.addEventListener('click', dismiss, { once: true });
+  }, 900);
+}
+
 // ── VHS TRACKING GLITCH ──────────────────────────────
 (function () {
   const gl = document.createElement('div');
@@ -1779,6 +2131,7 @@ updateDishUI();
 loadObjects();
 physicsTick();
 setTimeout(() => setStatus('ANTENNA ARRAY ONLINE — USE ARROW KEYS TO AIM', 'ok'), 1200);
+initSplash();
 
 </script>
 </body>
