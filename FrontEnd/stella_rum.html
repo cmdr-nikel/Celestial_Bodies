@@ -35,17 +35,96 @@
     user-select: none;
   }
 
-  /* CRT scanlines overlay */
-  body::before {
-    content: '';
-    position: fixed; inset: 0; z-index: 9999;
+     /* ============ VHS / CRT — AGGRESSIVE ============ */
+
+  /* chromatic aberrations */
+  #app {
+    filter: url(#vhs-chroma);
+  }
+
+  /* main overlay */
+  .vhs-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
     pointer-events: none;
+
+    /* dark horizontal strings */
     background: repeating-linear-gradient(
       0deg,
-      transparent, transparent 2px,
-      rgba(0,0,0,0.02) 2px, rgba(0,0,0,0.02) 4px
+      transparent            0px,
+      transparent            2px,
+      rgba(0, 0, 0, 0.22)    2px,
+      rgba(0, 0, 0, 0.22)    3px
     );
   }
+
+  /* RGB vertical strings */
+  .vhs-overlay::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      90deg,
+      rgba(255,  0, 20, 0.10) 0px,
+      rgba(255,  0, 20, 0.10) 1px,
+      rgba(  0,255,  0, 0.05) 1px,
+      rgba(  0,255,  0, 0.05) 2px,
+      rgba(  0, 20,255, 0.10) 2px,
+      rgba(  0, 20,255, 0.10) 3px,
+      transparent             3px,
+      transparent             6px
+    );
+    mix-blend-mode: screen;
+    animation: vhsShift 0.18s steps(3) infinite;
+  }
+
+  .vhs-overlay::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0;
+    height: 5px;
+    background: linear-gradient(
+      transparent,
+      rgba(255,255,255, 0.35) 50%,
+      transparent
+    );
+    filter: blur(2px);
+    opacity: 0;
+    animation: vhsScan 7s linear infinite;
+  }
+
+  /* Vinhet */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+    pointer-events: none;
+    background: radial-gradient(
+      ellipse at center,
+      transparent 55%,
+      rgba(0, 0, 0, 0.55) 100%
+    );
+  }
+
+  /* ============ Animations ============ */
+  @keyframes vhsShift {
+    0%   { transform: translateX(0px);  opacity: 0.55; }
+    33%  { transform: translateX(-4px); opacity: 0.70; }
+    66%  { transform: translateX( 3px); opacity: 0.45; }
+    100% { transform: translateX(0px);  opacity: 0.55; }
+  }
+
+  @keyframes vhsScan {
+    0%   { top: -1%;   opacity: 0;    }
+    4%   { opacity: 1; }
+    50%  { opacity: 0.5; }
+    96%  { opacity: 0.9; }
+    100% { top: 102%;  opacity: 0;   }
+  }
+
+
 
   /* CRT vignette overlay */
   body::after {
@@ -236,10 +315,47 @@
 </style>
 </head>
 <body>
+
+<!-- VHS SVG Chromatic Aberration Filter -->
+<svg style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+  <defs>
+    <filter id="vhs-chroma" x="-5%" y="-5%" width="110%" height="110%"
+            color-interpolation-filters="sRGB">
+      <!--  R-chanel mooved on left -->
+      <feColorMatrix in="SourceGraphic" type="matrix"
+        values="1 0 0 0 0
+                0 0 0 0 0
+                0 0 0 0 0
+                0 0 0 1 0" result="r"/>
+      <feOffset in="r" dx="-1" dy="0" result="rOff"/>
+
+      <!-- G-chanel on placeе -->
+      <feColorMatrix in="SourceGraphic" type="matrix"
+        values="0 0 0 0 0
+                0 1 0 0 0
+                0 0 0 0 0
+                0 0 0 1 0" result="g"/>
+
+      <!-- B-chanel on right -->
+      <feColorMatrix in="SourceGraphic" type="matrix"
+        values="0 0 0 0 0
+                0 0 0 0 0
+                0 0 1 0 0
+                0 0 0 1 0" result="b"/>
+      <feOffset in="b" dx="1" dy="0" result="bOff"/>
+
+      <!-- glue them together again -->
+      <feBlend in="rOff" in2="g"   mode="screen" result="rg"/>
+      <feBlend in="rg"  in2="bOff" mode="screen"/>
+    </filter>
+  </defs>
+</svg>
+
+<div class="vhs-overlay" aria-hidden="true"></div>
 <div id="app">
 
   <header id="header">
-    <div class="logo">STELL<span>A</span>RUM <span style="font-size:14px;letter-spacing:2px">OBS-TERMINAL v0.4(!)</span></div>
+    <div class="logo">STELL<span>A</span>RUM <span style="font-size:14px;letter-spacing:2px">OBS-TERMINAL v0.5(!)</span></div>
     <div class="hinfo">
       <div>SESSION <b>NKD-042</b></div>
       <div>DATASET <b>SDSS DR17</b></div>
@@ -530,9 +646,6 @@ function seededRandom(seed) {
 // ═══════════════════════════════════════════════════════════════════
 //  DRAW SKY — progressive left-to-right scan
 // ═══════════════════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════════════
-//  DRAW SKY — progressive left-to-right scan
-// ═══════════════════════════════════════════════════════════════════
 let scanAnimId  = null;
 let scanDebounce = null;  // debounce timer
 
@@ -634,7 +747,7 @@ function drawSky() {
       }
     }
     scanStep();
-  }, 300); // tune if needed
+  }, 500); // tune if needed
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1589,6 +1702,75 @@ async function loadObjects() {
   }
 }
 
+// ── VHS NOISE CANVAS ────────────────────────
+(function () {
+  const nc = document.createElement('canvas');
+  nc.style.cssText = [
+    'position:fixed', 'inset:0',
+    'width:100vw',    'height:100vh',
+    'z-index:99998',  'pointer-events:none',
+    'opacity:0.055',   'mix-blend-mode:screen',
+    'image-rendering:pixelated'
+  ].join(';');
+  nc.id = 'vhs-noise-canvas';
+  document.body.appendChild(nc);
+
+  const W = 360, H = 270;           // lowres prob faster
+  nc.width = W; nc.height = H;
+  const nctx = nc.getContext('2d');
+
+  function drawNoise() {
+    const id = nctx.createImageData(W, H);
+    const d  = id.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const v = (Math.random() * 220) | 0;
+      d[i] = d[i+1] = d[i+2] = v;
+      d[i+3] = 255;
+    }
+    nctx.putImageData(id, 0, 0);
+  }
+
+  drawNoise();
+  setInterval(drawNoise, 100);
+})();
+
+// ── VHS TRACKING GLITCH ──────────────────────────────
+(function () {
+  const gl = document.createElement('div');
+  gl.style.cssText = [
+    'position:fixed', 'left:0', 'right:0',
+    'z-index:99999',  'pointer-events:none',
+    'display:none'
+  ].join(';');
+  document.body.appendChild(gl);
+
+  function glitch() {
+    const top     = (10 + Math.random() * 80).toFixed(1) + '%';
+    const height  = (1  + Math.random() *  4).toFixed(1) + 'px';
+    const alpha   = (0.15 + Math.random() * 0.45).toFixed(2);
+    const offsetX = (Math.random() * 6 - 3).toFixed(1) + 'px';
+    gl.style.top       = top;
+    gl.style.height    = height;
+    gl.style.transform = `translateX(${offsetX})`;
+    gl.style.background = `rgba(255,255,255,${alpha})`;
+    gl.style.filter     = 'blur(0.8px)';
+    gl.style.display    = 'block';
+
+    const dur = 60 + Math.random() * 180;
+    setTimeout(() => { gl.style.display = 'none'; }, dur);
+
+    // random
+    if (Math.random() < 0.3) {
+      setTimeout(glitch, dur + 80);
+    }
+
+    // another one random element
+    setTimeout(glitch, 1800 + Math.random() * 7000);
+  }
+
+  setTimeout(glitch, 2500);
+})();
+
 // ═══════════════════════════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════════════════════════
@@ -1597,6 +1779,7 @@ updateDishUI();
 loadObjects();
 physicsTick();
 setTimeout(() => setStatus('ANTENNA ARRAY ONLINE — USE ARROW KEYS TO AIM', 'ok'), 1200);
+
 </script>
 </body>
 </html>
