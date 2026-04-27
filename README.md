@@ -1,7 +1,7 @@
 # STELLaRUM — Observation Terminal
 ### Stellar Classification · SDSS DR17 · Interactive Frontend
 
-> *A university ML project that classifies stars, galaxies, and quasars from the Sloan Digital Sky Survey — wrapped in a browser-based radio telescope game inspired by [Voices of the Void](https://store.steampowered.com/app/1826590/Voices_of_the_Void/).*
+> *A university ML project that classifies stars, galaxies, and quasars from the Sloan Digital Sky Survey — wrapped in a browser-based radio telescope game inspired by [Voices of the Void](https://votv.dev/).*
 
 ---
 
@@ -9,7 +9,7 @@
 
 STELLaRUM is a two-part project:
 
-- **Backend** — supervised ML pipeline classifying 100,000 celestial objects (STAR / GALAXY / QSO) using KNN, Random Forest, and XGBoost. The central experiment tests how much the spectroscopic `redshift` feature contributes to accuracy, and what happens when it is removed.
+- **Backend** — supervised ML pipeline classifying 100,000 celestial objects (STAR / GALAXY / QSO) using KNN and Random Forest. The central experiment tests how much the spectroscopic `redshift` feature contributes to accuracy, and what happens when it is removed.
 - **Frontend** — a self-contained browser game (`stella_rum.html`) where the player operates a three-dish antenna array, triangulates signals, and classifies objects using real SDSS DR17 photometric data. No server required.
 
 ---
@@ -21,7 +21,7 @@ stellarum/
 ├── backend/
 │   ├── 01eda.ipynb                  # Exploratory Data Analysis
 │   ├── 02preprocessing.ipynb        # Feature engineering, train/test split
-│   ├── 03models.ipynb               # KNN, Random Forest, XGBoost training
+│   ├── 03models.ipynb               # KNN, Random Forest training
 │   ├── 05featureimportance.ipynb    # RF feature importance analysis
 │   └── output/
 │       ├── dataset_full.npz         # Scaled features + labels, full set
@@ -187,3 +187,5 @@ The terminal uses the Web Audio API for procedural sound effects (scan sweep, tr
 
 Abdurrouf et al. (2022), *The Seventeenth Data Release of the Sloan Digital Sky Survey's Complete Release of MaNGA, MaStar, and APOGEE-2 Data*, ApJS, 259, 35.  
 DOI: [10.3847/1538-4365/ac4414](https://doi.org/10.3847/1538-4365/ac4414)
+Dataset: https://www.kaggle.com/datasets/fedesoriano/stellar-classification-dataset-sdss17/data
+Original: https://www.sdss4.org/dr17/ 
