@@ -305,7 +305,7 @@
 .mail-item.unread .mail-from { color: var(--white); }
 .mail-from { color: var(--text); letter-spacing: 1px; }
 .mail-subj { color: var(--muted); font-size: 10px; }
-.mail-new  { color: var(--green-b); font-size: 9px; float: right; } k
+.mail-new  { color: var(--green-b); font-size: 9px; float: right; }
 
 #mail-body {
   flex: 1; overflow-y: auto;
@@ -640,8 +640,8 @@ function resizeCanvas() {
   const dpr = window.devicePixelRatio || 1;
   const W = wrap.clientWidth;
   const H = wrap.clientHeight;
-  canvas.clientWidth  = W * dpr;
-  canvas.clientHeight = H * dpr;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
   canvas.style.width  = W + 'px';
   canvas.style.height = H + 'px';
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -1240,7 +1240,7 @@ const previewCanvas = document.getElementById('preview-canvas');
 const pCtx          = previewCanvas.getContext('2d');
 
 function drawPreview(obj, blockSize) {
-  const W = previewcanvas.clientWidth, H = previewcanvas.clientHeight;
+  const W = previewCanvas.width, H = previewCanvas.height;
   pCtx.clearRect(0, 0, W, H);
   pCtx.fillStyle = '#000'; pCtx.fillRect(0, 0, W, H);
 
@@ -2332,8 +2332,6 @@ function initSplash() {
   if (isIOS && !navigator.standalone) {
     setTimeout(() => setStatus('TIP: ADD TO HOME SCREEN FOR FULLSCREEN MODE', 'ok'), 3000);
   }
-
-</script>
 
 // ═══════════════════════════════════════════════════════════════════
 //  INIT
