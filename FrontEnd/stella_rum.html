@@ -2,7 +2,7 @@
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>STELLARUM — Observation Terminal</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap');
@@ -25,7 +25,7 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   html, body {
-    width: 100%; height: 100%; overflow: hidden;
+    width: 100%; height: 100%; height: 100dvh; overflow: hidden;
     background: var(--bg);
     color: var(--text);
     font-family: var(--font-mono);
@@ -136,10 +136,15 @@
   }
 
   #app {
-    display: grid;
-    grid-template-columns: 220px 1fr 268px;
-    grid-template-rows: 36px 1fr 28px;
-    width: 100vw; height: 100vh;
+  display: grid;
+  grid-template-columns: 220px 1fr 268px;
+  grid-template-rows: 36px 1fr 28px;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  box-sizing: border-box;
   }
 
   #header {
@@ -609,6 +614,9 @@ const dishVel = [
   { az: 0, el: 0 },
   { az: 0, el: 0 },
 ];
+
+const dishTarget = [null, null, null]; // { az, el } | null
+
 const VEL_ACCEL  = 0.2;   // acceleration per frame — raise for snappier start
 const VEL_MAX    = 1.5;   // max degrees/frame — raise for faster top speed
 const VEL_DRAG   = 0.72;  // friction (0-1) — lower = stops faster
@@ -629,11 +637,25 @@ const ctx    = canvas.getContext('2d');
 const wrap   = document.getElementById('sky-wrap');
 
 function resizeCanvas() {
-  canvas.width  = wrap.clientWidth;
-  canvas.height = wrap.clientHeight;
+  const dpr = window.devicePixelRatio || 1;
+  const W = wrap.clientWidth;
+  const H = wrap.clientHeight;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   drawSky();
 }
-window.addEventListener('resize', resizeCanvas);
+
+function handleResize() {
+  setTimeout(() => { resizeCanvas(); }, 150);
+}
+
+window.addEventListener('resize', handleResize);
+window.addEventListener('orientationchange', () => {
+  setTimeout(() => { resizeCanvas(); }, 300);
+});
 
 // ═══════════════════════════════════════════════════════════════════
 //  COORDINATE TRANSFORMS
@@ -662,7 +684,7 @@ function skyToCanvas(ra, dec) {
 }
 
 function canvasToSky(px, py) {
-  const W = canvas.width, H = canvas.height;
+  const W = canvas.clientWidth, H = canvas.clientHeight;
   const cx = W / 2 + mapOffset.x;
   const cy = H / 2 + mapOffset.y;
   return {
@@ -1099,6 +1121,25 @@ if (ap.x < 0 || ap.x > W || ap.y < 0 || ap.y > H) {
 
   ctx.restore();
 }
+
+  // Markers for tap-trgets
+  for (let i = 0; i < 3; i++) {
+    const t = dishTarget[i];
+    if (!t) continue;
+    const p = skyToCanvas(t.az, t.el - 45);
+    if (p.x < -20 || p.x > canvas.clientWidth + 20) continue;
+    const pulse = (Math.sin(Date.now() * 0.008) + 1) / 2;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 5 + pulse * 3, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(106,172,121,${0.4 + pulse * 0.5})`;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(106,172,121,0.75)';
+    ctx.font = '9px Share Tech Mono, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(['A','B','C'][i], p.x + 8, p.y - 8);
+  }
+
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1132,6 +1173,21 @@ function physicsTick() {
   for (let i = 0; i < 3; i++) {
     const v = dishVel[i];
     const d = dishes[i];
+
+    const t = dishTarget[i];
+    if (t) {
+      let dAz = t.az - d.az;
+      if (dAz >  180) dAz -= 360;
+      if (dAz < -180) dAz += 360;
+      const dEl = t.el - d.el;
+      v.az += dAz * 0.18;
+      v.el += dEl * 0.18;
+      if (Math.abs(dAz) < 0.15 && Math.abs(dEl) < 0.15) {
+        d.az = t.az; d.el = t.el;
+        v.az = 0;    v.el = 0;
+        dishTarget[i] = null;
+      }
+    }
 
     // Clamp velocity
     v.az = Math.max(-VEL_MAX, Math.min(VEL_MAX, v.az));
@@ -1346,6 +1402,74 @@ canvas.style.cursor = 'crosshair';
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
   mapScale = Math.max(0.25, Math.min(10, mapScale * (e.deltaY < 0 ? 1.15 : 0.87)));
+  scheduledRedraw();
+}, { passive: false });
+
+// ── TOUCH ──────────────────────────────────────────────
+let touchStartPos = null;
+let lastPinchDist = null;
+const TAP_THRESHOLD = 12;
+
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (audioCtx.state === 'suspended') { audioCtx.resume(); loadAmbient(); }
+  if (e.touches.length === 1) {
+    touchStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    isDragging = true;
+    dragStart       = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    dragOffsetStart = { x: camRA, y: camDec };
+  }
+  if (e.touches.length === 2) {
+    isDragging = false;
+    lastPinchDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (e.touches.length === 1 && isDragging) {
+    const dx = e.touches[0].clientX - dragStart.x;
+    const dy = e.touches[0].clientY - dragStart.y;
+    const sensitivity = 0.15 / mapScale;
+    camRA  = (dragOffsetStart.x - dx * sensitivity + 360) % 360;
+    camDec = Math.max(-85, Math.min(85, dragOffsetStart.y + dy * sensitivity));
+    drawSkyFast();
+  }
+  if (e.touches.length === 2 && lastPinchDist) {
+    const dist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    mapScale = Math.max(0.25, Math.min(10, mapScale * dist / lastPinchDist));
+    lastPinchDist = dist;
+    scheduledRedraw();
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+  e.preventDefault();
+  lastPinchDist = null;
+  if (!touchStartPos) return;
+  const touch = e.changedTouches[0];
+  const moved = Math.hypot(
+    touch.clientX - touchStartPos.x,
+    touch.clientY - touchStartPos.y
+  );
+  if (moved < TAP_THRESHOLD) {
+    const rect = canvas.getBoundingClientRect();
+    const sky  = canvasToSky(touch.clientX - rect.left, touch.clientY - rect.top);
+    dishTarget[activeDish] = {
+      az: (sky.ra + 360) % 360,
+      el: Math.max(0, Math.min(90, sky.dec + 45))
+    };
+    selectDish((activeDish + 1) % 3);
+    setStatus(`DISH ${['A','B','C'][activeDish]} → TARGET SET`, 'ok');
+  }
+  isDragging    = false;
+  touchStartPos = null;
   scheduledRedraw();
 }, { passive: false });
 
