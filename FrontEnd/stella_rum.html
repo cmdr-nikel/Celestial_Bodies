@@ -570,9 +570,9 @@
     <button class="btn" onclick="toggleAmbient()" style="margin-left:10px;">
       [ ∿ ]
     </button>
-  </div>
-</footer>
-
+    <button class="btn" id="btn-fs" onclick="toggleFullscreen()" style="margin-left:6px;">
+      ⛶ FS
+    </button>
   </div>
 </footer>
 
@@ -640,8 +640,8 @@ function resizeCanvas() {
   const dpr = window.devicePixelRatio || 1;
   const W = wrap.clientWidth;
   const H = wrap.clientHeight;
-  canvas.width  = W * dpr;
-  canvas.height = H * dpr;
+  canvas.clientWidth  = W * dpr;
+  canvas.clientHeight = H * dpr;
   canvas.style.width  = W + 'px';
   canvas.style.height = H + 'px';
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -676,7 +676,7 @@ function skyToCanvas(ra, dec) {
   const dot = ox*cx + oy*cy + oz*cz;
   if (dot < 0.1) return { x: -9999, y: -9999 };
 
-  const W = canvas.width, H = canvas.height;
+  const W = canvas.clientWidth, H = canvas.clientHeight;
   const scale = Math.min(W, H) * mapScale * 0.5;
   const px = W/2 + (oy*cx - ox*cy) / (1 + dot) * scale * 2;
   const py = H/2 - (oz - cz*dot) / (1 + dot) * scale * 2;
@@ -743,7 +743,7 @@ let scanDebounce = null;  // debounce timer
 
 // Fast redraw — no scan animation, instant render
 function drawSkyFast() {
-  const W = canvas.width, H = canvas.height;
+  const W = canvas.clientWidth, H = canvas.clientHeight;
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, W, H);
@@ -787,7 +787,7 @@ function drawSky() {
   scanDebounce = setTimeout(() => {
     if (scanAnimId) { cancelAnimationFrame(scanAnimId); scanAnimId = null; }
 
-    const W = canvas.width, H = canvas.height;
+    const W = canvas.clientWidth, H = canvas.clientHeight;
     ctx.clearRect(0, 0, W, H);
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, W, H);
@@ -846,7 +846,7 @@ function drawSky() {
 //  GRID
 // ═══════════════════════════════════════════════════════════════════
 function drawGrid() {
-  const W = canvas.width, H = canvas.height;
+  const W = canvas.clientWidth, H = canvas.clientHeight;
   ctx.lineWidth = 1;
   ctx.font = '9px Share Tech Mono, monospace';
 
@@ -930,7 +930,7 @@ ctx.lineWidth = 1; // refresh
 // ═══════════════════════════════════════════════════════════════════
 function drawMilkyWay() {
   const rng = seededRandom(777);
-  const W = canvas.width, H = canvas.height;
+  const W = canvas.clientWidth, H = canvas.clientHeight;
 
   for (let i = 0; i < 600; i++) {
     const ra        = rng() * 360;
@@ -960,7 +960,7 @@ function drawMilkyWay() {
 // ═══════════════════════════════════════════════════════════════════
 function drawNebulae() {
   const rng = seededRandom(1337);
-  const W = canvas.width, H = canvas.height;
+  const W = canvas.clientWidth, H = canvas.clientHeight;
 
   for (let i = 0; i < 150; i++) {
     const ra  = rng() * 360;
@@ -990,7 +990,7 @@ function drawDishes() {
     const sky = dishToSky(d);
     const p   = skyToCanvas(sky.ra, sky.dec);
     const isA = i === activeDish;
-    const scanPx = (SCAN_RADIUS_DEG / 360) * canvas.width * mapScale;
+    const scanPx = (SCAN_RADIUS_DEG / 360) * canvas.clientWidth * mapScale;
 
     // Pulsing ring on active dish
   if (isA) {
@@ -1028,7 +1028,7 @@ function drawDishes() {
   const positions = dishes.map(d => skyToCanvas(dishToSky(d).ra, dishToSky(d).dec));
   const triCx = (positions[0].x + positions[1].x + positions[2].x) / 3;
   const triCy = (positions[0].y + positions[1].y + positions[2].y) / 3;
-  const scanPx0 = (SCAN_RADIUS_DEG / 360) * canvas.width * mapScale;
+  const scanPx0 = (SCAN_RADIUS_DEG / 360) * canvas.clientWidth * mapScale;
 
   // Distances between each pair of dishes (in pixels)
   const d01 = Math.hypot(positions[0].x - positions[1].x, positions[0].y - positions[1].y);
@@ -1073,7 +1073,7 @@ function drawDishes() {
   // Off-screen arrow indicator for active dish
 const ad   = dishes[activeDish];
 const ap   = skyToCanvas(dishToSky(ad).ra, dishToSky(ad).dec);
-const W    = canvas.width, H = canvas.height;
+const W    = canvas.clientWidth, H = canvas.clientHeight;
 const margin = 28;
 
 if (ap.x < 0 || ap.x > W || ap.y < 0 || ap.y > H) {
@@ -1147,7 +1147,7 @@ if (ap.x < 0 || ap.x > W || ap.y < 0 || ap.y > H) {
 // ═══════════════════════════════════════════════════════════════════
 function updateStats() {
   let vis = 0;
-  const W = canvas.width, H = canvas.height;
+  const W = canvas.clientWidth, H = canvas.clientHeight;
   for (const obj of objects) {
     const p = skyToCanvas(obj.ra, obj.dec);
     if (p.x > 0 && p.x < W && p.y > 0 && p.y < H) vis++;
@@ -1240,7 +1240,7 @@ const previewCanvas = document.getElementById('preview-canvas');
 const pCtx          = previewCanvas.getContext('2d');
 
 function drawPreview(obj, blockSize) {
-  const W = previewCanvas.width, H = previewCanvas.height;
+  const W = previewcanvas.clientWidth, H = previewcanvas.clientHeight;
   pCtx.clearRect(0, 0, W, H);
   pCtx.fillStyle = '#000'; pCtx.fillRect(0, 0, W, H);
 
@@ -2309,6 +2309,31 @@ function initSplash() {
 
   setTimeout(glitch, 2500);
 })();
+
+  // ── FULLSCREEN ──────────────────────────────────────
+  function toggleFullscreen() {
+    const el = document.documentElement;
+    if (!document.fullscreenElement) {
+      if (el.requestFullscreen) {
+        el.requestFullscreen()
+          .then(() => setTimeout(resizeCanvas, 200))
+          .catch(() => setStatus('FULLSCREEN NOT SUPPORTED ON THIS BROWSER', 'err'));
+      } else {
+        setStatus('ADD TO HOME SCREEN FOR FULLSCREEN ON IOS', 'err');
+      }
+    } else {
+      document.exitFullscreen?.().then(() => setTimeout(resizeCanvas, 200));
+    }
+  }
+
+  document.addEventListener('fullscreenchange', () => setTimeout(resizeCanvas, 200));
+
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+  if (isIOS && !navigator.standalone) {
+    setTimeout(() => setStatus('TIP: ADD TO HOME SCREEN FOR FULLSCREEN MODE', 'ok'), 3000);
+  }
+
+</script>
 
 // ═══════════════════════════════════════════════════════════════════
 //  INIT
