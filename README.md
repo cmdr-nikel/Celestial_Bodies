@@ -133,6 +133,7 @@ The frontend is a **single HTML file** — no framework, no build step, no serve
 | `TAB` | Next dish |
 | `1` `2` `3` | Select dish A / B / C |
 | `S` | Scan — attempt triangulation lock |
+| `[ SURVEY ]` | KNN area survey — analyse objects around the triangulation point |
 | `R` | Reset active dish to default position |
 | `drag` | Pan the sky map |
 | `scroll` | Zoom in/out |
@@ -144,6 +145,26 @@ The frontend is a **single HTML file** — no framework, no build step, no serve
 |  STAR | Peaks in `r` and `i` bands · redshift near `z ≈ 0` · compact point in preview |
 |  GALAXY | Spread evenly across all `ugriz` bands · moderate redshift `z < 1` · diffuse elliptical shape |
 |  QSO | Strong `u`-band excess · high redshift `z > 1`, sometimes `z > 3` · irregular glow in preview |
+
+### KNN Area Survey
+
+The `[ SURVEY ]` button runs an in-browser **k-Nearest Neighbours** classifier over all objects within a 20° radius of the current triangulation centroid — no server, no external library.
+
+**How it works:**
+
+1. The centroid RA/Dec of the three dish targets is computed
+2. All objects in `objects.json` that fall within the 20° survey radius are collected as candidates
+3. For each candidate, Euclidean distance is calculated in a 6-dimensional spectral feature space — `u_norm`, `g_norm`, `r_norm`, `i_norm`, `z_norm`, `color_gr`
+4. The k=5 nearest neighbours determine the predicted class (majority vote)
+5. Predictions are aggregated across all candidates → class distribution shown as percentages
+
+The result answers: *"what kind of objects is this region of sky likely to contain?"* — useful as a prior before committing to a triangulation scan.
+
+**Visual feedback:**
+- A pulsing ripple wave expands from the triangulation centre to the survey radius while the algorithm runs
+- A progress bar tracks completion; results appear cleanly once the animation ends
+
+The feature space intentionally mirrors the photometric-only (no `redshift`) model from the backend experiment — making the frontend classification an interactive demonstration of exactly what the backend measures.
 
 ### Interface panels
 
