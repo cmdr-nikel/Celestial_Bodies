@@ -257,6 +257,44 @@
   .btn.qso:hover    { border-color: #bbaacc; color: #bbaacc; }
   .btn:active { background: #111; }
 
+  #survey-results {
+    display: none;
+    padding: 8px 0 4px;
+    font-size: 10px;
+    border-top: 1px solid var(--border);
+    color: var(--dim);
+    line-height: 1.8;
+  }
+  #survey-results .sr-label {
+    color: var(--muted); letter-spacing: 1px; margin-bottom: 4px;
+  }
+  #survey-results .sr-bar {
+    display: flex; gap: 6px; align-items: center; margin: 2px 0;
+  }
+  #survey-results .sr-name { width: 64px; }
+  #survey-results .sr-pct  { color: var(--bright); width: 32px; }
+  #survey-results .sr-track {
+    flex: 1; height: 4px; background: var(--border); border-radius: 2px;
+  }
+  #survey-results .sr-fill  { height: 100%; border-radius: 2px; }
+
+  #survey-progress-wrap {
+    display: none;
+    padding: 6px 0 2px;
+    border-top: 1px solid var(--border);
+  }
+  #survey-progress-label {
+    color: var(--dim); font-size: 9px; letter-spacing: 1px; margin-bottom: 3px;
+  }
+  #survey-progress-track {
+    height: 3px; background: var(--border); border-radius: 2px; overflow: hidden;
+  }
+  #survey-progress-bar {
+    height: 100%; width: 0%;
+    background: rgba(106,172,121,0.75);
+    border-radius: 2px;
+  }
+
   #statusbar {
     grid-column: 1 / -1;
     display: flex; align-items: center; justify-content: space-between;
@@ -518,6 +556,7 @@
 
     <div id="actions">
       <button class="btn primary" onclick="doScan()">[ SCAN ]</button>
+      <button class="btn" onclick="doSurvey()">[ SURVEY ]</button>
       <button class="btn" onclick="doReset()">[ RESET ]</button>
     </div>
 
@@ -528,6 +567,18 @@
         <button class="btn galaxy" onclick="classify('GALAXY')">[ ░ GALAXY ]</button>
         <button class="btn qso"    onclick="classify('QSO')">[ ⊛ QSO ]</button>
       </div>
+    </div>
+
+    <div id="survey-progress-wrap">
+      <div id="survey-progress-label">ANALYSING AREA...</div>
+      <div id="survey-progress-track">
+        <div id="survey-progress-bar"></div>
+      </div>
+    </div>
+
+    <div id="survey-results">
+      <div class="sr-label">KNN AREA SURVEY</div>
+      <div id="sr-content"></div>
     </div>
 
         <!-- HELP VIEW -->
@@ -600,6 +651,8 @@ let activeDish      = 0;
 
 let lastFullRedraw = 0;
 
+const surveyAnim = { active: false, startTime: 0, duration: 1800, rafId: null };
+
 let camRA = 180;
 let camDec = 0;
 
@@ -636,7 +689,10 @@ const dishes = [
   { az: 195.0, el: 45.0 },
 ];
 
-const SCAN_RADIUS_DEG = 8;
+const SCAN_RADIUS_DEG   = 8;
+const SURVEY_RADIUS_DEG = 20;
+const KNN_K             = 5;
+const KNN_FEATURES      = ['u_norm', 'g_norm', 'r_norm', 'i_norm', 'z_norm', 'color_gr'];
 
 // ═══════════════════════════════════════════════════════════════════
 //  CANVAS SETUP
@@ -1079,6 +1135,22 @@ function drawDishes() {
     ctx.stroke();
   }
 
+  // Survey ripple waves
+  if (surveyAnim.active) {
+    const elapsed  = (Date.now() - surveyAnim.startTime) / surveyAnim.duration;
+    const surveyPx = (SURVEY_RADIUS_DEG / 360) * canvas.clientWidth * mapScale;
+    for (let i = 0; i < 4; i++) {
+      const phase = ((elapsed - i * 0.22) % 1.0 + 1.0) % 1.0;
+      const r = phase * surveyPx;
+      const alpha = (1 - phase) * 0.55;
+      ctx.beginPath();
+      ctx.arc(triCx, triCy, r, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(106,172,121,${alpha.toFixed(2)})`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+  }
+
   // Off-screen arrow indicator for active dish
 const ad   = dishes[activeDish];
 const ap   = skyToCanvas(dishToSky(ad).ra, dishToSky(ad).dec);
@@ -1481,6 +1553,99 @@ canvas.addEventListener('touchend', e => {
   touchStartPos = null;
   scheduledRedraw();
 }, { passive: false });
+
+// ═══════════════════════════════════════════════════════════════════
+//  SURVEY — KNN area classification
+// ═══════════════════════════════════════════════════════════════════
+function doSurvey() {
+  const skyCoords = dishes.map(d => dishToSky(d));
+  const centRA  = skyCoords.reduce((s, c) => s + c.ra,  0) / 3;
+  const centDec = skyCoords.reduce((s, c) => s + c.dec, 0) / 3;
+
+  const candidates = objects.filter(obj => {
+    const dRa = obj.ra - centRA, dDec = obj.dec - centDec;
+    return Math.sqrt(dRa*dRa + dDec*dDec) <= SURVEY_RADIUS_DEG;
+  });
+
+  const el           = document.getElementById('survey-results');
+  const content      = document.getElementById('sr-content');
+  const progressWrap = document.getElementById('survey-progress-wrap');
+  const progressBar  = document.getElementById('survey-progress-bar');
+
+  if (candidates.length === 0) {
+    content.innerHTML = `<div style="color:var(--dim);font-size:9px">no objects in survey radius</div>`;
+    el.style.display = 'block';
+    setStatus('SURVEY: NO OBJECTS IN RANGE', 'err');
+    return;
+  }
+
+  el.style.display = 'none';
+  progressWrap.style.display = 'block';
+  progressBar.style.transition = 'none';
+  progressBar.style.width = '0%';
+  setStatus('SURVEYING AREA...');
+
+  if (surveyAnim.rafId) cancelAnimationFrame(surveyAnim.rafId);
+  surveyAnim.active    = true;
+  surveyAnim.startTime = Date.now();
+
+  function tick() {
+    const elapsed  = Date.now() - surveyAnim.startTime;
+    const progress = Math.min(elapsed / surveyAnim.duration, 1);
+    progressBar.style.transition = 'none';
+    progressBar.style.width = (progress * 100) + '%';
+    drawSkyFast();
+
+    if (progress < 1) {
+      surveyAnim.rafId = requestAnimationFrame(tick);
+    } else {
+      surveyAnim.active = false;
+      surveyAnim.rafId  = null;
+      progressWrap.style.display = 'none';
+      drawSkyFast();
+      surveyShowResults(candidates, el, content);
+    }
+  }
+  surveyAnim.rafId = requestAnimationFrame(tick);
+}
+
+function surveyShowResults(candidates, el, content) {
+  const tally = { STAR: 0, GALAXY: 0, QSO: 0 };
+  for (const cand of candidates) {
+    const dists = [];
+    for (const ref of objects) {
+      if (ref.id === cand.id) continue;
+      let d2 = 0;
+      for (const f of KNN_FEATURES) d2 += (cand[f] - ref[f]) ** 2;
+      dists.push({ cls: ref.class, d2 });
+    }
+    dists.sort((a, b) => a.d2 - b.d2);
+    const votes = {};
+    for (const n of dists.slice(0, KNN_K)) votes[n.cls] = (votes[n.cls] || 0) + 1;
+    const predicted = Object.keys(votes).reduce((a, b) => votes[a] > votes[b] ? a : b);
+    tally[predicted]++;
+  }
+
+  const total   = candidates.length;
+  const colours = { STAR: '#ccccaa', GALAXY: '#8899aa', QSO: '#bbaacc' };
+  const icons   = { STAR: '✦', GALAXY: '░', QSO: '⊛' };
+
+  content.innerHTML =
+    Object.entries(tally)
+      .sort((a, b) => b[1] - a[1])
+      .map(([cls, n]) => {
+        const pct = Math.round((n / total) * 100);
+        return `<div class="sr-bar">
+          <span class="sr-name" style="color:${colours[cls]}">${icons[cls]} ${cls}</span>
+          <span class="sr-pct">${pct}%</span>
+          <span class="sr-track"><span class="sr-fill" style="width:${pct}%;background:${colours[cls]}"></span></span>
+        </div>`;
+      }).join('') +
+    `<div style="color:var(--dim);margin-top:4px;font-size:9px">${total} objects · k=${KNN_K} · r=${SURVEY_RADIUS_DEG}°</div>`;
+
+  el.style.display = 'block';
+  setStatus(`SURVEY COMPLETE — ${total} OBJECTS ANALYSED`, 'ok');
+}
 
 // ═══════════════════════════════════════════════════════════════════
 //  SCAN
