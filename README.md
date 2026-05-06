@@ -153,7 +153,7 @@ The `[ SURVEY ]` button runs an in-browser **k-means** clustering pass over all 
 **How it works:**
 
 1. The centroid RA/Dec of the three dish targets is computed
-2. All objects in `objects.json` that fall within the 20° survey radius are collected as candidates
+2. All objects in `objects.json` that fall within the 30° survey radius are collected as candidates
 3. Each candidate is embedded in a 6-dimensional photometric feature space — `u_norm`, `g_norm`, `r_norm`, `i_norm`, `z_norm`, `color_gr`
 4. k-means (`k=3`) iteratively groups candidates into unlabeled clusters based on Euclidean distance to cluster centroids
 5. Cluster sizes are aggregated and shown as percentages, with dominant class/purity displayed only as interpretation
