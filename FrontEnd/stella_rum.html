@@ -577,7 +577,7 @@
     </div>
 
     <div id="survey-results">
-      <div class="sr-label">KNN AREA SURVEY</div>
+      <div class="sr-label">UNSUPERVISED AREA SURVEY</div>
       <div id="sr-content"></div>
     </div>
 
@@ -691,8 +691,8 @@ const dishes = [
 
 const SCAN_RADIUS_DEG   = 8;
 const SURVEY_RADIUS_DEG = 20;
-const KNN_K             = 5;
-const KNN_FEATURES      = ['u_norm', 'g_norm', 'r_norm', 'i_norm', 'z_norm', 'color_gr'];
+const SURVEY_CLUSTER_K  = 3;
+const SURVEY_FEATURES   = ['u_norm', 'g_norm', 'r_norm', 'i_norm', 'z_norm', 'color_gr'];
 
 // ═══════════════════════════════════════════════════════════════════
 //  CANVAS SETUP
@@ -1555,7 +1555,7 @@ canvas.addEventListener('touchend', e => {
 }, { passive: false });
 
 // ═══════════════════════════════════════════════════════════════════
-//  SURVEY — KNN area classification
+//  SURVEY — unsupervised area clustering (k-means)
 // ═══════════════════════════════════════════════════════════════════
 function doSurvey() {
   const skyCoords = dishes.map(d => dishToSky(d));
@@ -1609,42 +1609,108 @@ function doSurvey() {
   surveyAnim.rafId = requestAnimationFrame(tick);
 }
 
-function surveyShowResults(candidates, el, content) {
-  const tally = { STAR: 0, GALAXY: 0, QSO: 0 };
-  for (const cand of candidates) {
-    const dists = [];
-    for (const ref of objects) {
-      if (ref.id === cand.id) continue;
-      let d2 = 0;
-      for (const f of KNN_FEATURES) d2 += (cand[f] - ref[f]) ** 2;
-      dists.push({ cls: ref.class, d2 });
-    }
-    dists.sort((a, b) => a.d2 - b.d2);
-    const votes = {};
-    for (const n of dists.slice(0, KNN_K)) votes[n.cls] = (votes[n.cls] || 0) + 1;
-    const predicted = Object.keys(votes).reduce((a, b) => votes[a] > votes[b] ? a : b);
-    tally[predicted]++;
+function surveyKMeans(candidates, k = SURVEY_CLUSTER_K, iterations = 14) {
+  if (!candidates.length) return [];
+
+  const clampedK = Math.max(1, Math.min(k, candidates.length));
+  const vectors = candidates.map(obj => SURVEY_FEATURES.map(f => Number(obj[f]) || 0));
+
+  // Deterministic centroid seeds keep results stable for the same area.
+  const centroids = [];
+  for (let i = 0; i < clampedK; i++) {
+    const idx = Math.floor(i * candidates.length / clampedK);
+    centroids.push([...vectors[idx]]);
   }
 
+  const assignment = new Array(candidates.length).fill(0);
+  for (let step = 0; step < iterations; step++) {
+    let moved = false;
+
+    for (let i = 0; i < vectors.length; i++) {
+      let bestCluster = 0;
+      let bestDist = Infinity;
+      for (let c = 0; c < centroids.length; c++) {
+        let d2 = 0;
+        for (let j = 0; j < vectors[i].length; j++) {
+          const delta = vectors[i][j] - centroids[c][j];
+          d2 += delta * delta;
+        }
+        if (d2 < bestDist) {
+          bestDist = d2;
+          bestCluster = c;
+        }
+      }
+      if (assignment[i] !== bestCluster) {
+        assignment[i] = bestCluster;
+        moved = true;
+      }
+    }
+
+    const sums = Array.from(
+      { length: clampedK },
+      () => new Array(SURVEY_FEATURES.length).fill(0)
+    );
+    const counts = new Array(clampedK).fill(0);
+
+    for (let i = 0; i < vectors.length; i++) {
+      const cluster = assignment[i];
+      counts[cluster]++;
+      for (let j = 0; j < vectors[i].length; j++) sums[cluster][j] += vectors[i][j];
+    }
+
+    for (let c = 0; c < clampedK; c++) {
+      if (counts[c] === 0) continue;
+      for (let j = 0; j < centroids[c].length; j++) centroids[c][j] = sums[c][j] / counts[c];
+    }
+
+    if (!moved) break;
+  }
+
+  return assignment;
+}
+
+function surveyShowResults(candidates, el, content) {
+  const assignment = surveyKMeans(candidates);
   const total   = candidates.length;
-  const colours = { STAR: '#ccccaa', GALAXY: '#8899aa', QSO: '#bbaacc' };
-  const icons   = { STAR: '✦', GALAXY: '░', QSO: '⊛' };
+  const palette = ['#7ec8ff', '#a3e6a0', '#f3b27f', '#d3a7ff'];
+  const clusters = Array.from({ length: Math.max(...assignment, 0) + 1 }, (_, idx) => ({
+    id: idx,
+    size: 0,
+    classVotes: { STAR: 0, GALAXY: 0, QSO: 0 },
+  }));
+
+  for (let i = 0; i < candidates.length; i++) {
+    const cid = assignment[i];
+    clusters[cid].size++;
+    const cls = candidates[i].class;
+    if (clusters[cid].classVotes[cls] !== undefined) clusters[cid].classVotes[cls]++;
+  }
+
+  const clusterRows = clusters
+    .filter(c => c.size > 0)
+    .sort((a, b) => b.size - a.size)
+    .map(cluster => {
+      const pct = Math.round((cluster.size / total) * 100);
+      const dominant = Object.entries(cluster.classVotes).sort((a, b) => b[1] - a[1])[0];
+      const dominantClass = dominant ? dominant[0] : 'N/A';
+      const purity = dominant ? Math.round((dominant[1] / cluster.size) * 100) : 0;
+      const colour = palette[cluster.id % palette.length];
+      return `<div class="sr-bar">
+        <span class="sr-name" style="color:${colour}">CL-${cluster.id + 1}</span>
+        <span class="sr-pct">${pct}%</span>
+        <span class="sr-track"><span class="sr-fill" style="width:${pct}%;background:${colour}"></span></span>
+        <div style="color:var(--dim);font-size:9px;margin-left:64px;">
+          dominant: ${dominantClass} (${purity}%)
+        </div>
+      </div>`;
+    }).join('');
 
   content.innerHTML =
-    Object.entries(tally)
-      .sort((a, b) => b[1] - a[1])
-      .map(([cls, n]) => {
-        const pct = Math.round((n / total) * 100);
-        return `<div class="sr-bar">
-          <span class="sr-name" style="color:${colours[cls]}">${icons[cls]} ${cls}</span>
-          <span class="sr-pct">${pct}%</span>
-          <span class="sr-track"><span class="sr-fill" style="width:${pct}%;background:${colours[cls]}"></span></span>
-        </div>`;
-      }).join('') +
-    `<div style="color:var(--dim);margin-top:4px;font-size:9px">${total} objects · k=${KNN_K} · r=${SURVEY_RADIUS_DEG}°</div>`;
+    clusterRows +
+    `<div style="color:var(--dim);margin-top:4px;font-size:9px">${total} objects · k-means k=${SURVEY_CLUSTER_K} · r=${SURVEY_RADIUS_DEG}°</div>`;
 
   el.style.display = 'block';
-  setStatus(`SURVEY COMPLETE — ${total} OBJECTS ANALYSED`, 'ok');
+  setStatus(`SURVEY COMPLETE — ${total} OBJECTS CLUSTERED`, 'ok');
 }
 
 // ═══════════════════════════════════════════════════════════════════

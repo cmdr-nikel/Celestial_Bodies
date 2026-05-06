@@ -9,7 +9,7 @@
 
 STELLaRUM is a two-part project:
 
-- **Backend** — supervised ML pipeline classifying 100,000 celestial objects (STAR / GALAXY / QSO) using KNN and Random Forest. The central experiment tests how much the spectroscopic `redshift` feature contributes to accuracy, and what happens when it is removed.
+- **Backend** — primarily supervised ML pipeline classifying 100,000 celestial objects (STAR / GALAXY / QSO) using KNN and Random Forest, with unsupervised EDA projections (`t-SNE`, `UMAP`) for class-separability analysis. The central experiment tests how much the spectroscopic `redshift` feature contributes to accuracy, and what happens when it is removed.
 - **Frontend** — a self-contained browser game (`stella_rum.html`) where the player operates a three-dish antenna array, triangulates signals, and classifies objects using real SDSS DR17 photometric data. No server required.
 
 ---
@@ -133,7 +133,7 @@ The frontend is a **single HTML file** — no framework, no build step, no serve
 | `TAB` | Next dish |
 | `1` `2` `3` | Select dish A / B / C |
 | `S` | Scan — attempt triangulation lock |
-| `[ SURVEY ]` | KNN area survey — analyse objects around the triangulation point |
+| `[ SURVEY ]` | Unsupervised area survey (k-means) — cluster objects around the triangulation point |
 | `R` | Reset active dish to default position |
 | `drag` | Pan the sky map |
 | `scroll` | Zoom in/out |
@@ -146,25 +146,25 @@ The frontend is a **single HTML file** — no framework, no build step, no serve
 |  GALAXY | Spread evenly across all `ugriz` bands · moderate redshift `z < 1` · diffuse elliptical shape |
 |  QSO | Strong `u`-band excess · high redshift `z > 1`, sometimes `z > 3` · irregular glow in preview |
 
-### KNN Area Survey
+### Unsupervised Area Survey
 
-The `[ SURVEY ]` button runs an in-browser **k-Nearest Neighbours** classifier over all objects within a 20° radius of the current triangulation centroid — no server, no external library.
+The `[ SURVEY ]` button runs an in-browser **k-means** clustering pass over all objects within a 20° radius of the current triangulation centroid — no server, no external library.
 
 **How it works:**
 
 1. The centroid RA/Dec of the three dish targets is computed
 2. All objects in `objects.json` that fall within the 20° survey radius are collected as candidates
-3. For each candidate, Euclidean distance is calculated in a 6-dimensional spectral feature space — `u_norm`, `g_norm`, `r_norm`, `i_norm`, `z_norm`, `color_gr`
-4. The k=5 nearest neighbours determine the predicted class (majority vote)
-5. Predictions are aggregated across all candidates → class distribution shown as percentages
+3. Each candidate is embedded in a 6-dimensional photometric feature space — `u_norm`, `g_norm`, `r_norm`, `i_norm`, `z_norm`, `color_gr`
+4. k-means (`k=3`) iteratively groups candidates into unlabeled clusters based on Euclidean distance to cluster centroids
+5. Cluster sizes are aggregated and shown as percentages, with dominant class/purity displayed only as interpretation
 
-The result answers: *"what kind of objects is this region of sky likely to contain?"* — useful as a prior before committing to a triangulation scan.
+The result answers: *"how does this sky region naturally partition in feature space?"* — useful as an unsupervised prior before committing to a triangulation scan.
 
 **Visual feedback:**
 - A pulsing ripple wave expands from the triangulation centre to the survey radius while the algorithm runs
 - A progress bar tracks completion; results appear cleanly once the animation ends
 
-The feature space intentionally mirrors the photometric-only (no `redshift`) model from the backend experiment — making the frontend classification an interactive demonstration of exactly what the backend measures.
+The feature space intentionally mirrors the photometric-only (no `redshift`) backend setup, while the survey itself remains unsupervised. This keeps the frontend aligned with the project requirement of explicit unsupervised components in both backend and frontend.
 
 ### Interface panels
 
